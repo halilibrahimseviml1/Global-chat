@@ -1,0 +1,416 @@
+-- // ADVANCED GLOBAL CHAT (Creator Teleport, Info Panel, FPS/MS Tracking)
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local TeleportService = game:GetService("TeleportService")
+local Stats = game:GetService("Stats")
+local localPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+
+-- Render API Address
+local API_URL = "https://roblox-global-chat-wrln.onrender.com"
+local http_request = (syn and syn.request) or (http and http.request) or request or http_request
+
+-- Active user data storage for /info command
+local activeUserData = {}
+
+-- Get current game name and info
+local currentGameName = "Roblox Game"
+pcall(function()
+    local info = MarketplaceService:GetProductInfo(game.PlaceId)
+    if info and info.Name then currentGameName = info.Name end
+end)
+
+-- Calculate FPS & MS securely
+local function getPerformanceStats()
+    local fps = 60
+    local ms = 50
+    pcall(function()
+        fps = math.floor(1 / Stats.Workspace.Heartbeat:GetValue())
+        ms = math.floor(LocalPlayer:GetNetworkPing() * 1000)
+    end)
+    return fps, ms
+end
+
+-- ============ 1. SETTINGS ============
+local settings = {
+    themeColor = Color3.fromRGB(30, 30, 30),
+    accentColor = Color3.fromRGB(0, 170, 255),
+    fontSize = 14,
+    messageLimit = 200,
+    historySize = 50,
+    enableSounds = true,
+    enableTimestamps = true,
+    enableWordFilter = true,
+    windowTransparency = 0.2,
+    windowSize = UDim2.new(0, 420, 0, 320),
+    minimized = false,
+    chatHistory = {},
+    bannedUsers = {},
+    bannedWords = {"badword1", "badword2"},
+}
+
+-- ============ 2. MAIN GUI CREATION ============
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "EasyGlobalChat_Pro"
+screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = settings.windowSize
+mainFrame.Position = UDim2.new(0, 50, 0, 50)
+mainFrame.BackgroundColor3 = settings.themeColor
+mainFrame.BackgroundTransparency = settings.windowTransparency
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 8)
+uiCorner.Parent = mainFrame
+
+-- ============ 3. TITLE BAR ============
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.BackgroundColor3 = settings.accentColor
+titleBar.BackgroundTransparency = 0.3
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainFrame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 8)
+titleCorner.Parent = titleBar
+
+local titleText = Instance.new("TextLabel")
+titleText.Name = "TitleText"
+titleText.Size = UDim2.new(1, -60, 1, 0)
+titleText.Position = UDim2.new(0, 10, 0, 0)
+titleText.BackgroundTransparency = 1
+titleText.Text = "⚡️LightningHub 🌐 Global Chat"
+titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleText.Font = Enum.Font.GothamBold
+titleText.TextSize = 16
+titleText.TextXAlignment = Enum.TextXAlignment.Left
+titleText.Parent = titleBar
+
+local minimizeButton = Instance.new("TextButton")
+minimizeButton.Name = "MinimizeButton"
+minimizeButton.Size = UDim2.new(0, 24, 0, 24)
+minimizeButton.Position = UDim2.new(1, -52, 0, 3)
+minimizeButton.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+minimizeButton.Text = "—"
+minimizeButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+minimizeButton.Font = Enum.Font.GothamBold
+minimizeButton.TextSize = 14
+minimizeButton.Parent = titleBar
+
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 24, 0, 24)
+closeButton.Position = UDim2.new(1, -26, 0, 3)
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+closeButton.Text = "✕"
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextSize = 14
+closeButton.Parent = titleBar
+
+-- ============ 4. CHAT CONTAINER ============
+local chatContainer = Instance.new("Frame")
+chatContainer.Name = "ChatContainer"
+chatContainer.Size = UDim2.new(1, 0, 1, -30)
+chatContainer.Position = UDim2.new(0, 0, 0, 30)
+chatContainer.BackgroundTransparency = 1
+chatContainer.Parent = mainFrame
+
+local scrollingFrame = Instance.new("ScrollingFrame")
+scrollingFrame.Name = "MessageScroll"
+scrollingFrame.Size = UDim2.new(1, 0, 1, -50)
+scrollingFrame.Position = UDim2.new(0, 0, 0, 0)
+scrollingFrame.BackgroundTransparency = 1
+scrollingFrame.BorderSizePixel = 0
+scrollingFrame.ScrollBarThickness = 6
+scrollingFrame.ScrollBarImageColor3 = settings.accentColor
+scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+scrollingFrame.Parent = chatContainer
+
+local uiListLayout = Instance.new("UIListLayout")
+uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+uiListLayout.Padding = UDim.new(0, 6)
+uiListLayout.Parent = scrollingFrame
+
+-- ============ 5. INPUT AREA ============
+local inputContainer = Instance.new("Frame")
+inputContainer.Name = "InputContainer"
+inputContainer.Size = UDim2.new(1, 0, 0, 50)
+inputContainer.Position = UDim2.new(0, 0, 1, -50)
+inputContainer.BackgroundTransparency = 1
+inputContainer.Parent = chatContainer
+
+local textBox = Instance.new("TextBox")
+textBox.Name = "MessageInput"
+textBox.Size = UDim2.new(1, -60, 0, 36)
+textBox.Position = UDim2.new(0, 5, 0, 7)
+textBox.PlaceholderText = "Type message, /ban, /join, /info [user]..."
+textBox.Text = ""
+textBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+textBox.Font = Enum.Font.Gotham
+textBox.TextSize = settings.fontSize
+textBox.ClearTextOnFocus = false
+textBox.TextWrapped = true
+textBox.Parent = inputContainer
+
+local textBoxCorner = Instance.new("UICorner")
+textBoxCorner.CornerRadius = UDim.new(0, 6)
+textBoxCorner.Parent = textBox
+
+local sendButton = Instance.new("TextButton")
+sendButton.Name = "SendButton"
+sendButton.Size = UDim2.new(0, 48, 0, 36)
+sendButton.Position = UDim2.new(1, -53, 0, 7)
+sendButton.BackgroundColor3 = settings.accentColor
+sendButton.Text = "➤"
+sendButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+sendButton.Font = Enum.Font.GothamBold
+sendButton.TextSize = 18
+sendButton.Parent = inputContainer
+
+local sendCorner = Instance.new("UICorner")
+sendCorner.CornerRadius = UDim.new(0, 6)
+sendCorner.Parent = sendButton
+
+-- ============ 6. SOUND & MESSAGE HANDLING ============
+local function playSound(id)
+    if settings.enableSounds then
+        local sound = Instance.new("Sound")
+        sound.SoundId = id
+        sound.Volume = 0.5
+        sound.Parent = screenGui
+        sound:Play()
+        game:GetService("Debris"):AddItem(sound, 2)
+    end
+end
+
+local function addMessage(senderName, senderId, messageText, gameName, isSystem)
+    if settings.bannedUsers[senderName] then return end
+
+    if #messageText > settings.messageLimit then
+        messageText = messageText:sub(1, settings.messageLimit) .. "..."
+    end
+
+    if settings.enableWordFilter and not isSystem then
+        for _, word in ipairs(settings.bannedWords) do
+            messageText = messageText:gsub(word, string.rep("*", #word))
+        end
+    end
+
+    local msgFrame = Instance.new("Frame")
+    msgFrame.Size = UDim2.new(1, -10, 0, 35)
+    msgFrame.BackgroundTransparency = 1
+    msgFrame.Parent = scrollingFrame
+
+    local avatarImg = Instance.new("ImageLabel")
+    avatarImg.Size = UDim2.new(0, 28, 0, 28)
+    avatarImg.Position = UDim2.new(0, 2, 0, 2)
+    avatarImg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    avatarImg.BorderSizePixel = 0
+    avatarImg.Parent = msgFrame
+
+    local avatarCorner = Instance.new("UICorner")
+    avatarCorner.CornerRadius = UDim.new(1, 0)
+    avatarCorner.Parent = avatarImg
+
+    if senderId and tonumber(senderId) > 0 then
+        pcall(function()
+            local content, isReady = Players:GetUserThumbnailAsync(tonumber(senderId), Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+            if isReady then avatarImg.Image = content end
+        end)
+    else
+        avatarImg.Image = "rbxassetid://6031075931"
+    end
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Name = "MessageText"
+    textLabel.Size = UDim2.new(1, -35, 1, 0)
+    textLabel.Position = UDim2.new(0, 35, 0, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextWrapped = true
+    textLabel.TextXAlignment = Enum.TextXAlignment.Left
+    textLabel.Font = Enum.Font.Gotham
+    textLabel.TextSize = settings.fontSize
+
+    local displayName = senderName
+    local textColor = Color3.fromRGB(255, 255, 255)
+
+    if senderName == "halilibrahimseviml1" then
+        textColor = Color3.fromRGB(255, 50, 50)
+        displayName = "[👑 Creator] " .. senderName
+    elseif isSystem then
+        textColor = Color3.fromRGB(255, 200, 100)
+        displayName = "[System]"
+    else
+        textColor = Color3.fromRGB(200, 200, 200)
+    end
+
+    textLabel.TextColor3 = textColor
+
+    local timestamp = settings.enableTimestamps and not isSystem and "[" .. os.date("%H:%M") .. "] " or ""
+    local gameTag = (gameName and gameName ~= "") and " (" .. gameName .. ")" or ""
+
+    textLabel.Text = timestamp .. displayName .. gameTag .. ": " .. tostring(messageText)
+    textLabel.Parent = msgFrame
+
+    local textBounds = game:GetService("TextService"):GetTextSize(textLabel.Text, settings.fontSize, textLabel.Font, Vector2.new(textLabel.AbsoluteSize.X, 500))
+    if textBounds.Y > 25 then
+        msgFrame.Size = UDim2.new(1, -10, 0, textBounds.Y + 5)
+    end
+end
+
+-- ============ 7. API COMMUNICATION (WITH TELEMETRY) ============
+local function sendToRenderAPI(msgText, currentAppGame, fps, ms)
+    if not http_request then return end
+    
+    task.spawn(function()
+        pcall(function()
+            http_request({
+                Url = API_URL .. "/send",
+                Method = "POST",
+                Headers = { ["Content-Type"] = "application/json" },
+                Body = HttpService:JSONEncode({
+                    sender = localPlayer.Name,
+                    senderId = localPlayer.UserId,
+                    message = msgText,
+                    game = currentAppGame,
+                    placeId = game.PlaceId,
+                    jobId = game.JobId,
+                    fps = fps,
+                    ms = ms
+                })
+            })
+        end)
+    end)
+end
+
+local function sendMessage()
+    local msg = textBox.Text:gsub("^%s*(.-)%s*$", "%1")
+    if msg ~= "" then
+        -- Creator Command: /ban [username]
+        if msg:sub(1, 5) == "/ban " then
+            if localPlayer.Name == "halilibrahimseviml1" then
+                local target = msg:sub(6)
+                settings.bannedUsers[target] = true
+                addMessage("System", 0, "Banned user: " .. target, "", true)
+            else
+                addMessage("System", 0, "Access denied!", "", true)
+            end
+            textBox.Text = ""
+            return
+        end
+
+        -- Creator Command: /join [username]
+        if msg:sub(1, 6) == "/join " then
+            if localPlayer.Name == "halilibrahimseviml1" then
+                local target = msg:sub(7)
+                local userData = activeUserData[target]
+                if userData and userData.placeId and userData.jobId then
+                    addMessage("System", 0, "Joining " .. target .. "'s server...", "", true)
+                    TeleportService:TeleportToPlaceInstance(userData.placeId, userData.jobId, localPlayer)
+                else
+                    addMessage("System", 0, "No active server data found for: " .. target, "", true)
+                end
+            else
+                addMessage("System", 0, "Access denied!", "", true)
+            end
+            textBox.Text = ""
+            return
+        end
+
+        -- Creator Command: /info [username]
+        if msg:sub(1, 6) == "/info " then
+            if localPlayer.Name == "halilibrahimseviml1" then
+                local target = msg:sub(7)
+                local userData = activeUserData[target]
+                if userData then
+                    addMessage("System", 0, string.format("INFO [%s] | Game: %s | FPS: %d | MS: %d", target, userData.game, userData.fps or 0, userData.ms or 0), "", true)
+                else
+                    addMessage("System", 0, "No telemetry data found for: " .. target, "", true)
+                end
+            else
+                addMessage("System", 0, "Access denied!", "", true)
+            end
+            textBox.Text = ""
+            return
+        end
+
+        local fps, ms = getPerformanceStats()
+        addMessage(localPlayer.Name, localPlayer.UserId, msg, currentGameName, false)
+        sendToRenderAPI(msg, currentGameName, fps, ms)
+        
+        textBox.Text = ""
+        playSound("rbxassetid://12222009811")
+    end
+end
+
+sendButton.MouseButton1Click:Connect(sendMessage)
+textBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then sendMessage() end
+end)
+
+-- ============ 8. POLLING INCOMING MESSAGES & TELEMETRY ============
+local lastProcessedId = 0
+
+task.spawn(function()
+    while task.wait(3) do
+        if http_request then
+            local success, response = pcall(function()
+                return http_request({ Url = API_URL .. "/get", Method = "GET" })
+            end)
+            
+            if success and response and response.Body then
+                local decodeSuccess, data = pcall(function()
+                    return HttpService:JSONDecode(response.Body)
+                end)
+                
+                if decodeSuccess and type(data) == "table" then
+                    for _, msg in ipairs(data) do
+                        if msg.id and msg.id > lastProcessedId then
+                            lastProcessedId = msg.id
+                            
+                            -- Cache telemetry details for /join and /info
+                            activeUserData[msg.sender] = {
+                                placeId = msg.placeId,
+                                jobId = msg.jobId,
+                                game = msg.game or "Roblox",
+                                fps = msg.fps,
+                                ms = msg.ms
+                            }
+
+                            if msg.sender ~= localPlayer.Name then
+                                addMessage(msg.sender, msg.senderId, msg.message, msg.game or "Roblox", false)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- ============ 9. UI CONTROLS ============
+minimizeButton.MouseButton1Click:Connect(function()
+    settings.minimized = not settings.minimized
+    chatContainer.Visible = not settings.minimized
+    mainFrame.Size = settings.minimized and UDim2.new(0, 420, 0, 30) or settings.windowSize
+end)
+
+closeButton.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
+end)
+
+addMessage("System", 0, "Global Chat loaded! Commands: /ban, /join, /info [username]", "", true)
