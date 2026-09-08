@@ -82,7 +82,7 @@ local settings = {
 
 -- Spam & Cooldown Settings
 local lastMessageTime = 0
-local SPAM_COOLDOWN = 2 -- Saniye cinsinden mesaj aralığı (Spam engelleyici)
+local SPAM_COOLDOWN = 2
 
 -- ============ 2. MAIN GUI CREATION ============
 local screenGui = Instance.new("ScreenGui")
@@ -140,7 +140,7 @@ minimizeButton.Text = "—"
 minimizeButton.TextColor3 = Color3.fromRGB(0, 0, 0)
 minimizeButton.Font = Enum.Font.GothamBold
 minimizeButton.TextSize = 14
-minimizeButton.ZIndex = 5 -- Butonların tıklanabilmesi için ZIndex öne alındı
+minimizeButton.ZIndex = 5
 minimizeButton.Parent = titleBar
 
 local closeButton = Instance.new("TextButton")
@@ -152,10 +152,10 @@ closeButton.Text = "✕"
 closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeButton.Font = Enum.Font.GothamBold
 closeButton.TextSize = 14
-closeButton.ZIndex = 5 -- Butonların tıklanabilmesi için ZIndex öne alındı
+closeButton.ZIndex = 5
 closeButton.Parent = titleBar
 
--- ============ 3.5. BLACKLIST PANEL (RIGHT SIDE - FOR CREATOR & MODERATORS) ============
+-- ============ 3.5. BLACKLIST PANEL ============
 local blacklistFrame, updateBlacklistUI
 if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == true then
     blacklistFrame = Instance.new("Frame")
@@ -564,7 +564,6 @@ end
 local function sendMessage()
     local msg = textBox.Text:gsub("^%s*(.-)%s*$", "%1")
     if msg ~= "" then
-        -- Spam / Flood Engelleyici
         if tick() - lastMessageTime < SPAM_COOLDOWN then
             addMessage("System", 0, "⚠️ Çok hızlı mesaj atıyorsun! Lütfen 2 saniye bekle.", true, false)
             return
@@ -645,6 +644,7 @@ end)
 
 -- ============ 7. POLLING INCOMING MESSAGES ============
 local lastProcessedId = 0
+local currentServerStart = 0
 
 task.spawn(function()
     while task.wait(3) do
@@ -658,8 +658,14 @@ task.spawn(function()
                     return HttpService:JSONDecode(response.Body)
                 end)
                 
-                if decodeSuccess and type(data) == "table" then
-                    for _, msg in ipairs(data) do
+                -- Yeni nesne formatına göre düzenlendi { serverStartTime, messages }
+                if decodeSuccess and type(data) == "table" and data.messages then
+                    if data.serverStartTime ~= currentServerStart then
+                        currentServerStart = data.serverStartTime
+                        lastProcessedId = 0
+                    end
+
+                    for _, msg in ipairs(data.messages) do
                         if msg.id and msg.id > lastProcessedId then
                             lastProcessedId = msg.id
 
