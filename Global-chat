@@ -71,9 +71,18 @@ local settings = {
     windowTransparency = 0.2,
     windowSize = UDim2.new(0, 420, 0, 320),
     minimized = false,
-    bannedUsers = {},
+    bannedUsers = {
+        ["1"] = true,
+        ["2"] = true,
+        [1] = true,
+        [2] = true
+    },
     bannedWords = {"badword1", "badword2"},
 }
+
+-- Spam & Cooldown Settings
+local lastMessageTime = 0
+local SPAM_COOLDOWN = 2 -- Saniye cinsinden mesaj aralığı (Spam engelleyici)
 
 -- ============ 2. MAIN GUI CREATION ============
 local screenGui = Instance.new("ScreenGui")
@@ -131,6 +140,7 @@ minimizeButton.Text = "—"
 minimizeButton.TextColor3 = Color3.fromRGB(0, 0, 0)
 minimizeButton.Font = Enum.Font.GothamBold
 minimizeButton.TextSize = 14
+minimizeButton.ZIndex = 5 -- Butonların tıklanabilmesi için ZIndex öne alındı
 minimizeButton.Parent = titleBar
 
 local closeButton = Instance.new("TextButton")
@@ -142,6 +152,7 @@ closeButton.Text = "✕"
 closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeButton.Font = Enum.Font.GothamBold
 closeButton.TextSize = 14
+closeButton.ZIndex = 5 -- Butonların tıklanabilmesi için ZIndex öne alındı
 closeButton.Parent = titleBar
 
 -- ============ 3.5. BLACKLIST PANEL (RIGHT SIDE - FOR CREATOR & MODERATORS) ============
@@ -250,7 +261,6 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
             pLabel.TextXAlignment = Enum.TextXAlignment.Left
             pLabel.Parent = pFrame
 
-            -- Unban button only for creator
             if localPlayer.Name == "halilibrahimseviml1" then
                 local unbanBtn = Instance.new("TextButton")
                 unbanBtn.Size = UDim2.new(0, 42, 0, 24)
@@ -298,7 +308,6 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
         if enterPressed then
             local targetId = blInput.Text:gsub("^%s*(.-)%s*$", "%1")
             if targetId ~= "" then
-                -- Prevent banning creator or mods
                 if targetId ~= "halilibrahimseviml1" and moderators[targetId] ~= true then
                     settings.bannedUsers[targetId] = true
                     blInput.Text = ""
@@ -387,7 +396,9 @@ local function playSound(id)
 end
 
 local function addMessage(senderName, senderId, messageText, isSystem, hasCopyButton, copyTextContent)
-    if settings.bannedUsers[senderName] or settings.bannedUsers[tostring(senderId)] then return end
+    if settings.bannedUsers[senderName] or settings.bannedUsers[tostring(senderId)] or settings.bannedUsers[tonumber(senderId)] then 
+        return 
+    end
 
     if #messageText > settings.messageLimit then
         messageText = messageText:sub(1, settings.messageLimit) .. "..."
@@ -450,7 +461,7 @@ local function addMessage(senderName, senderId, messageText, isSystem, hasCopyBu
             end
         end)
     elseif moderators[senderName] then
-        textColor = Color3.fromRGB(255, 50, 50) -- Red color for moderators' messages
+        textColor = Color3.fromRGB(255, 50, 50)
         displayName = "[🛡️ Mod] " .. senderName
         textLabel.TextColor3 = textColor
     elseif isSystem then
@@ -553,6 +564,13 @@ end
 local function sendMessage()
     local msg = textBox.Text:gsub("^%s*(.-)%s*$", "%1")
     if msg ~= "" then
+        -- Spam / Flood Engelleyici
+        if tick() - lastMessageTime < SPAM_COOLDOWN then
+            addMessage("System", 0, "⚠️ Çok hızlı mesaj atıyorsun! Lütfen 2 saniye bekle.", true, false)
+            return
+        end
+        lastMessageTime = tick()
+
         local fps, ms = getPerformanceStats()
 
         if msg:sub(1, 7) == "/admin " then
@@ -586,7 +604,6 @@ local function sendMessage()
         if msg:sub(1, 5) == "/ban " then
             if hasPermission(localPlayer.Name) then
                 local target = msg:sub(6)
-                -- Strict Protection: Creator and Moderators cannot be banned
                 if target ~= "halilibrahimseviml1" and moderators[target] ~= true then
                     settings.bannedUsers[target] = true
                     if updateBlacklistUI then updateBlacklistUI() end
@@ -646,18 +663,21 @@ task.spawn(function()
                         if msg.id and msg.id > lastProcessedId then
                             lastProcessedId = msg.id
 
-                            if msg.message and msg.message:lower() == "hi" then
-                                addMessage(msg.sender, msg.senderId, msg.message, false, false)
-                                addSystemMessage("Hi. If you want to try it, here is my new admin script: https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208", true, "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208")
-                            else
-                                addMessage(msg.sender, msg.senderId, msg.message, msg.isCommand or false, false)
-                            end
+                            local sId = tonumber(msg.senderId)
+                            if sId ~= 1 and sId ~= 2 and not settings.bannedUsers[tostring(msg.senderId)] and not settings.bannedUsers[msg.sender] then
+                                if msg.message and msg.message:lower() == "hi" then
+                                    addMessage(msg.sender, msg.senderId, msg.message, false, false)
+                                    addSystemMessage("Hi. If you want to try it, here is my new admin script: https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208", true, "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208")
+                                else
+                                    addMessage(msg.sender, msg.senderId, msg.message, msg.isCommand or false, false)
+                                end
 
-                            if msg.message and msg.message:find("banned user:") then
-                                local target = msg.message:match("banned user: (.+)$")
-                                if target and target ~= "halilibrahimseviml1" and moderators[target] ~= true then
-                                    settings.bannedUsers[target] = true
-                                    if updateBlacklistUI then updateBlacklistUI() end
+                                if msg.message and msg.message:find("banned user:") then
+                                    local target = msg.message:match("banned user: (.+)$")
+                                    if target and target ~= "halilibrahimseviml1" and moderators[target] ~= true then
+                                        settings.bannedUsers[target] = true
+                                        if updateBlacklistUI then updateBlacklistUI() end
+                                    end
                                 end
                             end
                         end
@@ -679,4 +699,4 @@ closeButton.MouseButton1Click:Connect(function()
     screenGui:Destroy()
 end)
 
-addMessage("System", 0, "Global Chat loaded! Commands: /admin, /unadmin, /ban", true, false)
+addMessage("System", 0, "Global Chat loaded! ID 1, 2 and Spam filter active.", true, false)
