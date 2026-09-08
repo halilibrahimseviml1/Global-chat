@@ -3,7 +3,7 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local TeleportService = game:GetService("TeleportService")
-local Stats = game:GetService("Stats")
+local RunService = game:GetService("RunService")
 local localPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 
@@ -14,6 +14,9 @@ local http_request = (syn and syn.request) or (http and http.request) or request
 -- Active user data storage for /info command
 local activeUserData = {}
 
+-- Moderator list storage
+local moderators = {}
+
 -- Get current game name and info
 local currentGameName = "Roblox Game"
 pcall(function()
@@ -21,15 +24,29 @@ pcall(function()
     if info and info.Name then currentGameName = info.Name end
 end)
 
--- Calculate FPS & MS securely
+-- Calculate FPS & MS securely and accurately
+local lastUpdate = tick()
+local frameCount = 0
+local currentFPS = 60
+local currentMS = 50
+
+RunService.RenderStepped:Connect(function(dt)
+    frameCount = frameCount + 1
+    if tick() - lastUpdate >= 1 then
+        currentFPS = frameCount
+        currentMS = math.floor(dt * 1000)
+        frameCount = 0
+        lastUpdate = tick()
+    end
+end)
+
 local function getPerformanceStats()
-    local fps = 60
-    local ms = 50
-    pcall(function()
-        fps = math.floor(1 / Stats.Workspace.Heartbeat:GetValue())
-        ms = math.floor(LocalPlayer:GetNetworkPing() * 1000)
-    end)
-    return fps, ms
+    return currentFPS, currentMS
+end
+
+-- Permission check function
+local function hasPermission(playerName)
+    return playerName == "halilibrahimseviml1" or moderators[playerName] == true
 end
 
 -- ============ 1. SETTINGS ============
@@ -156,7 +173,7 @@ local textBox = Instance.new("TextBox")
 textBox.Name = "MessageInput"
 textBox.Size = UDim2.new(1, -60, 0, 36)
 textBox.Position = UDim2.new(0, 5, 0, 7)
-textBox.PlaceholderText = "Type message, /ban, /join, /info [user]..."
+textBox.PlaceholderText = "Type message, /ban, /admin, /join, /info..."
 textBox.Text = ""
 textBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -251,6 +268,9 @@ local function addMessage(senderName, senderId, messageText, gameName, isSystem)
     if senderName == "halilibrahimseviml1" then
         textColor = Color3.fromRGB(255, 50, 50)
         displayName = "[👑 Creator] " .. senderName
+    elseif moderators[senderName] then
+        textColor = Color3.fromRGB(0, 170, 255)
+        displayName = "[🛡️ Mod] " .. senderName
     elseif isSystem then
         textColor = Color3.fromRGB(255, 200, 100)
         displayName = "[System]"
@@ -273,7 +293,7 @@ local function addMessage(senderName, senderId, messageText, gameName, isSystem)
 end
 
 -- ============ 7. API COMMUNICATION (WITH TELEMETRY) ============
-local function sendToRenderAPI(msgText, currentAppGame, fps, ms)
+local function sendToRenderAPI(msgText, currentAppGame, fps, ms, isCmd)
     if not http_request then return end
     
     task.spawn(function()
@@ -290,7 +310,8 @@ local function sendToRenderAPI(msgText, currentAppGame, fps, ms)
                     placeId = game.PlaceId,
                     jobId = game.JobId,
                     fps = fps,
-                    ms = ms
+                    ms = ms,
+                    isCommand = isCmd
                 })
             })
         end)
@@ -300,12 +321,31 @@ end
 local function sendMessage()
     local msg = textBox.Text:gsub("^%s*(.-)%s*$", "%1")
     if msg ~= "" then
-        -- Creator Command: /ban [username]
-        if msg:sub(1, 5) == "/ban " then
+        local fps, ms = getPerformanceStats()
+
+        -- Creator Command: /admin [username]
+        if msg:sub(1, 7) == "/admin " then
             if localPlayer.Name == "halilibrahimseviml1" then
+                local target = msg:sub(8)
+                moderators[target] = true
+                local adminMsg = "[COMMAND] " .. localPlayer.Name .. " made " .. target .. " a moderator!"
+                addSystemMessage(adminMsg)
+                sendToRenderAPI(adminMsg, currentGameName, fps, ms, true)
+            else
+                addMessage("System", 0, "Access denied! Only Creator can use /admin.", "", true)
+            end
+            textBox.Text = ""
+            return
+        end
+
+        -- Command: /ban [username]
+        if msg:sub(1, 5) == "/ban " then
+            if hasPermission(localPlayer.Name) then
                 local target = msg:sub(6)
                 settings.bannedUsers[target] = true
-                addMessage("System", 0, "Banned user: " .. target, "", true)
+                local banMsg = "[COMMAND] " .. localPlayer.Name .. " banned user: " .. target
+                addSystemMessage(banMsg)
+                sendToRenderAPI(banMsg, currentGameName, fps, ms, true)
             else
                 addMessage("System", 0, "Access denied!", "", true)
             end
@@ -313,9 +353,9 @@ local function sendMessage()
             return
         end
 
-        -- Creator Command: /join [username]
+        -- Command: /join [username]
         if msg:sub(1, 6) == "/join " then
-            if localPlayer.Name == "halilibrahimseviml1" then
+            if hasPermission(localPlayer.Name) then
                 local target = msg:sub(7)
                 local userData = activeUserData[target]
                 if userData and userData.placeId and userData.jobId then
@@ -331,9 +371,9 @@ local function sendMessage()
             return
         end
 
-        -- Creator Command: /info [username]
+        -- Command: /info [username]
         if msg:sub(1, 6) == "/info " then
-            if localPlayer.Name == "halilibrahimseviml1" then
+            if hasPermission(localPlayer.Name) then
                 local target = msg:sub(7)
                 local userData = activeUserData[target]
                 if userData then
@@ -348,13 +388,16 @@ local function sendMessage()
             return
         end
 
-        local fps, ms = getPerformanceStats()
         addMessage(localPlayer.Name, localPlayer.UserId, msg, currentGameName, false)
-        sendToRenderAPI(msg, currentGameName, fps, ms)
+        sendToRenderAPI(msg, currentGameName, fps, ms, false)
         
         textBox.Text = ""
         playSound("rbxassetid://12222009811")
     end
+end
+
+function addSystemMessage(text)
+    addMessage("System", 0, text, "", true)
 end
 
 sendButton.MouseButton1Click:Connect(sendMessage)
@@ -391,9 +434,22 @@ task.spawn(function()
                                 ms = msg.ms
                             }
 
-                            if msg.sender ~= localPlayer.Name then
-                                addMessage(msg.sender, msg.senderId, msg.message, msg.game or "Roblox", false)
+                            -- Handle remote commands execution globally
+                            if msg.isCommand then
+                                if msg.message:find("banned user:") then
+                                    local target = msg.message:match("banned user: (.+)$")
+                                    if target then
+                                        settings.bannedUsers[target] = true
+                                    end
+                                elseif msg.message:find("made") and msg.message:find("a moderator!") then
+                                    local target = msg.message:match("%[COMMAND%] .+ made (.+) a moderator!$")
+                                    if target then
+                                        moderators[target] = true
+                                    end
+                                end
                             end
+
+                            addMessage(msg.sender, msg.senderId, msg.message, msg.game or "Roblox", msg.isCommand or false)
                         end
                     end
                 end
@@ -413,4 +469,4 @@ closeButton.MouseButton1Click:Connect(function()
     screenGui:Destroy()
 end)
 
-addMessage("System", 0, "Global Chat loaded! Commands: /ban, /join, /info [username]", "", true)
+addMessage("System", 0, "Global Chat loaded! Commands: /admin, /ban, /join, /info [username]", "", true)
