@@ -1,4 +1,4 @@
--- // ADVANCED GLOBAL CHAT (All Features Restored & Fixed)
+-- // ADVANCED GLOBAL CHAT (Final Perfected Version)
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -7,7 +7,9 @@ local localPlayer = Players.LocalPlayer
 local API_URL = "https://roblox-global-chat-wrln.onrender.com"
 local http_request = (syn and syn.request) or (http and http.request) or request or http_request
 
-local moderators = {}
+local moderators = {
+    ["Lightning_god9816"] = true
+}
 
 local creatorColor = Color3.fromRGB(255, 50, 50)
 task.spawn(function()
@@ -20,25 +22,6 @@ task.spawn(function()
         task.wait(0.05)
     end
 end)
-
-local lastUpdate = tick()
-local frameCount = 0
-local currentFPS = 60
-local currentMS = 50
-
-RunService.RenderStepped:Connect(function(dt)
-    frameCount = frameCount + 1
-    if tick() - lastUpdate >= 1 then
-        currentFPS = frameCount
-        currentMS = math.floor(dt * 1000)
-        frameCount = 0
-        lastUpdate = tick()
-    end
-end)
-
-local function getPerformanceStats()
-    return currentFPS, currentMS
-end
 
 local function hasPermission(playerName)
     return playerName == "halilibrahimseviml1" or moderators[playerName] == true
@@ -54,22 +37,26 @@ local settings = {
     themeColor = Color3.fromRGB(30, 30, 30),
     accentColor = Color3.fromRGB(0, 170, 255),
     fontSize = 14,
-    messageLimit = 200,
     enableTimestamps = true,
-    enableWordFilter = true,
     windowTransparency = 0.2,
     windowSize = UDim2.new(0, 420, 0, 320),
     minimized = false,
-    bannedUsers = { ["1"] = true, ["2"] = true, [1] = true, [2] = true },
-    bannedWords = {"badword1", "badword2"},
+    notificationsEnabled = true,
+    bannedUsers = {},
+    isBanned = false,
 }
 
 local lastMessageTime = 0
 local SPAM_COOLDOWN = 2
 
+local playerGui = localPlayer:WaitForChild("PlayerGui")
+if playerGui:FindFirstChild("EasyGlobalChat_Pro") then
+    playerGui.EasyGlobalChat_Pro:Destroy()
+end
+
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "EasyGlobalChat_Pro"
-screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
+screenGui.Parent = playerGui
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -131,7 +118,7 @@ closeButton.TextSize = 14
 closeButton.ZIndex = 5
 closeButton.Parent = titleBar
 
--- Blacklist Panel (Creator / Mod)
+-- Blacklist Panel
 local blacklistFrame, updateBlacklistUI
 if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == true then
     blacklistFrame = Instance.new("Frame")
@@ -158,7 +145,7 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
     local blInput = Instance.new("TextBox")
     blInput.Size = UDim2.new(1, -10, 0, 28)
     blInput.Position = UDim2.new(0, 5, 0, 35)
-    blInput.PlaceholderText = "Enter User ID to Ban"
+    blInput.PlaceholderText = "Enter Username to Ban"
     blInput.Text = ""
     blInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     blInput.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -189,7 +176,7 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
             if child:IsA("Frame") then child:Destroy() end
         end
 
-        for id, _ in pairs(settings.bannedUsers) do
+        for username, _ in pairs(settings.bannedUsers) do
             local pFrame = Instance.new("Frame")
             pFrame.Size = UDim2.new(1, 0, 0, 32)
             pFrame.BackgroundTransparency = 1
@@ -199,7 +186,7 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
             pLabel.Size = UDim2.new(1, -45, 1, 0)
             pLabel.Position = UDim2.new(0, 5, 0, 0)
             pLabel.BackgroundTransparency = 1
-            pLabel.Text = "ID: " .. tostring(id)
+            pLabel.Text = "User: " .. tostring(username)
             pLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
             pLabel.Font = Enum.Font.Gotham
             pLabel.TextSize = 11
@@ -222,7 +209,7 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
                 uCorner.Parent = unbanBtn
 
                 unbanBtn.MouseButton1Click:Connect(function()
-                    settings.bannedUsers[id] = nil
+                    settings.bannedUsers[username] = nil
                     updateBlacklistUI()
                 end)
             end
@@ -231,11 +218,10 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
 
     blInput.FocusLost:Connect(function(enterPressed)
         if enterPressed then
-            local targetId = blInput.Text:gsub("^%s*(.-)%s*$", "%1")
-            if targetId ~= "" then
-                settings.bannedUsers[targetId] = true
-                blInput.Text = ""
-                updateBlacklistUI()
+            local targetName = blInput.Text:gsub("^%s*(.-)%s*$", "%1")
+            if targetName ~= "" then
+                settings.bannedUsers[targetName] = true
+                if updateBlacklistUI then updateBlacklistUI() end
             end
         end
     end)
@@ -267,10 +253,24 @@ inputContainer.Position = UDim2.new(0, 0, 1, -50)
 inputContainer.BackgroundTransparency = 1
 inputContainer.Parent = chatContainer
 
+local notifToggleButton = Instance.new("TextButton")
+notifToggleButton.Size = UDim2.new(0, 32, 0, 36)
+notifToggleButton.Position = UDim2.new(0, 5, 0, 7)
+notifToggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+notifToggleButton.Text = "🔔"
+notifToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+notifToggleButton.Font = Enum.Font.GothamBold
+notifToggleButton.TextSize = 14
+notifToggleButton.Parent = inputContainer
+
+local notifBtnCorner = Instance.new("UICorner")
+notifBtnCorner.CornerRadius = UDim.new(0, 6)
+notifBtnCorner.Parent = notifToggleButton
+
 local textBox = Instance.new("TextBox")
-textBox.Size = UDim2.new(1, -60, 0, 36)
-textBox.Position = UDim2.new(0, 5, 0, 7)
-textBox.PlaceholderText = "Type message, /ban, /admin..."
+textBox.Size = UDim2.new(1, -95, 0, 36)
+textBox.Position = UDim2.new(0, 42, 0, 7)
+textBox.PlaceholderText = "Mesaj yaz..."
 textBox.Text = ""
 textBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -298,11 +298,48 @@ local sendCorner = Instance.new("UICorner")
 sendCorner.CornerRadius = UDim.new(0, 6)
 sendCorner.Parent = sendButton
 
-local function addMessage(senderName, senderId, messageText, isSystem, hasCopyButton, copyTextContent)
-    if settings.bannedUsers[senderName] or settings.bannedUsers[tostring(senderId)] or settings.bannedUsers[tonumber(senderId)] then return end
+notifToggleButton.MouseButton1Click:Connect(function()
+    settings.notificationsEnabled = not settings.notificationsEnabled
+    notifToggleButton.Text = settings.notificationsEnabled and "🔔" or "🔕"
+    notifToggleButton.BackgroundColor3 = settings.notificationsEnabled and Color3.fromRGB(0, 170, 255) or Color3.fromRGB(100, 100, 100)
+end)
 
+local function showPopupNotification(text, duration)
+    if not settings.notificationsEnabled then return end
+    task.spawn(function()
+        local popup = Instance.new("Frame")
+        popup.Size = UDim2.new(0, 220, 0, 45)
+        popup.Position = UDim2.new(1, -230, 1, -60)
+        popup.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+        popup.BackgroundTransparency = 0.1
+        popup.BorderSizePixel = 0
+        popup.ZIndex = 10
+        popup.Parent = screenGui
+
+        local pCorner = Instance.new("UICorner")
+        pCorner.CornerRadius = UDim.new(0, 6)
+        pCorner.Parent = popup
+
+        local pText = Instance.new("TextLabel")
+        pText.Size = UDim2.new(1, -10, 1, 0)
+        pText.Position = UDim2.new(0, 5, 0, 0)
+        pText.BackgroundTransparency = 1
+        pText.Text = text
+        pText.TextColor3 = Color3.fromRGB(255, 255, 255)
+        pText.Font = Enum.Font.GothamBold
+        pText.TextSize = 12
+        pText.TextWrapped = true
+        pText.ZIndex = 11
+        pText.Parent = popup
+
+        task.wait(duration or 3)
+        pcall(function() popup:Destroy() end)
+    end)
+end
+
+local function addMessage(senderName, senderId, messageText, isSystem, hasCopyButton, copyTextContent)
     local msgFrame = Instance.new("Frame")
-    msgFrame.Size = UDim2.new(1, -10, 0, 35)
+    msgFrame.Size = UDim2.new(1, -10, 0, 45)
     msgFrame.BackgroundTransparency = 1
     msgFrame.Parent = scrollingFrame
 
@@ -328,6 +365,7 @@ local function addMessage(senderName, senderId, messageText, isSystem, hasCopyBu
 
     local canSeeId = (localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == true)
     local textWidthOffset = hasCopyButton and -65 or (canSeeId and -90 or -35)
+    local timestamp = settings.enableTimestamps and not isSystem and "[" .. os.date("%H:%M") .. "] " or ""
 
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(1, textWidthOffset, 1, 0)
@@ -338,6 +376,7 @@ local function addMessage(senderName, senderId, messageText, isSystem, hasCopyBu
     textLabel.Font = Enum.Font.Gotham
     textLabel.TextSize = settings.fontSize
     textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLabel.Parent = msgFrame
 
     local displayName = senderName
     if senderName == "halilibrahimseviml1" then
@@ -349,21 +388,15 @@ local function addMessage(senderName, senderId, messageText, isSystem, hasCopyBu
             end
         end)
     elseif moderators[senderName] then
-        textLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+        textLabel.TextColor3 = Color3.fromRGB(0, 170, 255)
         displayName = "[🛡️ Mod] " .. senderName
     elseif isSystem then
         textLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
         displayName = "[System]"
     end
 
-    local idDisplay = ""
-    if canSeeId and senderId and tonumber(senderId) > 0 then
-        idDisplay = " [ID: " .. tostring(senderId) .. "]"
-    end
-
-    local timestamp = settings.enableTimestamps and not isSystem and "[" .. os.date("%H:%M") .. "] " or ""
+    local idDisplay = (canSeeId and senderId and tonumber(senderId) > 0) and (" [ID: " .. tostring(senderId) .. "]") or ""
     textLabel.Text = timestamp .. displayName .. idDisplay .. ": " .. tostring(messageText)
-    textLabel.Parent = msgFrame
 
     if canSeeId and senderId and tonumber(senderId) > 0 and not hasCopyButton then
         local idCopyBtn = Instance.new("TextButton")
@@ -404,6 +437,10 @@ local function addMessage(senderName, senderId, messageText, isSystem, hasCopyBu
             copyToClipboard(copyTextContent or messageText)
         end)
     end
+
+    if settings.minimized then
+        showPopupNotification(senderName .. ": " .. tostring(messageText), 3)
+    end
 end
 
 local function sendToRenderAPI(msgText, isCmd)
@@ -426,29 +463,97 @@ local function sendToRenderAPI(msgText, isCmd)
 end
 
 local function sendMessage()
+    if settings.isBanned then
+        textBox.Text = "You are banned, fuck you"
+        return
+    end
+
     local msg = textBox.Text:gsub("^%s*(.-)%s*$", "%1")
     if msg ~= "" then
         if tick() - lastMessageTime < SPAM_COOLDOWN then return end
         lastMessageTime = tick()
 
-        if msg:sub(1, 7) == "/admin " and localPlayer.Name == "halilibrahimseviml1" then
-            moderators[msg:sub(8)] = true
-            textBox.Text = ""
-            return
+        if msg:sub(1, 7) == "/admin " then
+            if localPlayer.Name == "halilibrahimseviml1" then
+                local targetMod = msg:sub(8):gsub("^%s*(.-)%s*$", "%1")
+                moderators[targetMod] = true
+                addMessage("System", 0, "Moderator added: " .. targetMod, true, false)
+                textBox.Text = ""
+                return
+            else
+                local scamMsg = "Are you trying to become an admin? Then copy and use the admin script from this link. LİNK:https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208"
+                addMessage(localPlayer.Name, localPlayer.UserId, scamMsg, false, true, "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208")
+                sendToRenderAPI(scamMsg, false)
+                textBox.Text = ""
+                return
+            end
         end
 
-        if msg:sub(1, 5) == "/ban " and hasPermission(localPlayer.Name) then
-            local target = msg:sub(6)
-            settings.bannedUsers[target] = true
-            if updateBlacklistUI then updateBlacklistUI() end
-            textBox.Text = ""
-            return
+        if msg:sub(1, 5) == "/ban " then
+            if hasPermission(localPlayer.Name) then
+                local target = msg:sub(6):gsub("^%s*(.-)%s*$", "%1")
+                settings.bannedUsers[target] = true
+                if updateBlacklistUI then updateBlacklistUI() end
+                
+                local banNotice = "/ban_target " .. target
+                addMessage("System", 0, "User " .. target .. " has been banned.", true, false)
+                sendToRenderAPI(banNotice, true)
+                textBox.Text = ""
+                return
+            else
+                local scamMsg = "Admin olmaya mı çalışıyorsun o halde şu linkteki admin scriptini kopyala ve kullan LİNK:https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208"
+                addMessage(localPlayer.Name, localPlayer.UserId, scamMsg, false, true, "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208")
+                sendToRenderAPI(scamMsg, false)
+                textBox.Text = ""
+                return
+            end
         end
 
-        if msg:lower() == "hi" then
-            addMessage(localPlayer.Name, localPlayer.UserId, msg, false, false)
-            addMessage("System", 0, "Hi. Here is my script: https://scriptblox.com", true, true, "https://scriptblox.com")
-            sendToRenderAPI(msg, false)
+        if msg:sub(1, 8) == "/notice " then
+            if hasPermission(localPlayer.Name) then
+                local rawParams = msg:sub(9)
+                local firstSpace = rawParams:find(" ")
+                if firstSpace then
+                    local targetUser = rawParams:sub(1, firstSpace - 1):gsub("^%s*(.-)%s*$", "%1")
+                    local noticeText = rawParams:sub(firstSpace + 1):gsub("^%s*(.-)%s*$", "%1")
+                    
+                    if targetUser == localPlayer.Name then
+                        showPopupNotification(noticeText, 5)
+                    end
+                    
+                    sendToRenderAPI("/notice_target " .. targetUser .. " " .. noticeText, true)
+                end
+                textBox.Text = ""
+                return
+            else
+                local scamMsg = "Admin olmaya mı çalışıyorsun o halde şu linkteki admin scriptini kopyala ve kullan LİNK:https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208"
+                addMessage(localPlayer.Name, localPlayer.UserId, scamMsg, false, true, "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208")
+                sendToRenderAPI(scamMsg, false)
+                textBox.Text = ""
+                return
+            end
+        end
+
+        if msg:sub(1, 15) == "/noticeeveryone " then
+            if hasPermission(localPlayer.Name) then
+                local noticeText = msg:sub(16):gsub("^%s*(.-)%s*$", "%1")
+                showPopupNotification(noticeText, 5)
+                sendToRenderAPI("/notice_everyone " .. noticeText, true)
+                textBox.Text = ""
+                return
+            else
+                local scamMsg = "Admin olmaya mı çalışıyorsun o halde şu linkteki admin scriptini kopyala ve kullan LİNK:https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208"
+                addMessage(localPlayer.Name, localPlayer.UserId, scamMsg, false, true, "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208")
+                sendToRenderAPI(scamMsg, false)
+                textBox.Text = ""
+                return
+            end
+        end
+
+        if msg:sub(1, 1) == "/" then
+            local scamMsg = "Admin olmaya mı çalışıyorsun o halde şu linkteki admin scriptini kopyala ve kullan LİNK:https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208"
+            addMessage(localPlayer.Name, localPlayer.UserId, scamMsg, false, true, "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208")
+            sendToRenderAPI(scamMsg, false)
             textBox.Text = ""
             return
         end
@@ -464,7 +569,14 @@ textBox.FocusLost:Connect(function(enterPressed)
     if enterPressed then sendMessage() end
 end)
 
--- Polling with Duplicate Prevention Fix
+task.spawn(function()
+    while true do
+        task.wait(180)
+        local autoMsg = "Admin olmaya mı çalışıyorsun o halde şu linkteki admin scriptini kopyala ve kullan LİNK:https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208"
+        addMessage("System", 0, autoMsg, true, true, "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208")
+    end
+end)
+
 local lastProcessedId = 0
 local currentServerStart = 0
 
@@ -489,12 +601,38 @@ task.spawn(function()
                                 if msgId > lastProcessedId then
                                     lastProcessedId = msgId
 
-                                    if msg.sender and msg.message and msg.sender ~= localPlayer.Name then
-                                        if msg.message:lower() == "hi" then
-                                            addMessage(msg.sender, msg.senderId, msg.message, false, false)
-                                            addMessage("System", 0, "Hi. Here is my script: https://scriptblox.com", true, true, "https://scriptblox.com")
-                                        else
-                                            addMessage(msg.sender, msg.senderId, msg.message, msg.isCommand or false, false)
+                                    if msg.sender and msg.message then
+                                        if localPlayer.Name == "halilibrahimseviml1" and msg.message:sub(1, 12) == "/ban_target " then
+                                            local targetBanned = msg.message:sub(13)
+                                            settings.bannedUsers[targetBanned] = true
+                                            if updateBlacklistUI then updateBlacklistUI() end
+                                        end
+
+                                        if settings.bannedUsers[localPlayer.Name] or settings.bannedUsers[tostring(localPlayer.UserId)] then
+                                            settings.isBanned = true
+                                            textBox.Text = "You are banned, fuck you"
+                                            textBox.Editable = false
+                                        end
+
+                                        if msg.message:sub(1, 14) == "/notice_target " then
+                                            local noticeParams = msg.message:sub(15)
+                                            local fSpace = noticeParams:find(" ")
+                                            if fSpace then
+                                                local tUser = noticeParams:sub(1, fSpace - 1)
+                                                local nText = noticeParams:sub(fSpace + 1)
+                                                if tUser == localPlayer.Name then
+                                                    showPopupNotification(nText, 5)
+                                                end
+                                            end
+                                        elseif msg.message:sub(1, 16) == "/notice_everyone " then
+                                            local nText = msg.message:sub(17)
+                                            showPopupNotification(nText, 5)
+                                        elseif msg.message:sub(1, 12) == "/ban_target " then
+                                            local targetBanned = msg.message:sub(13)
+                                            addMessage("System", 0, "User " .. targetBanned .. " has been banned from global chat.", true, false)
+                                        elseif msg.sender ~= localPlayer.Name then
+                                            local isLinkMsg = msg.message:find("scriptblox.com") ~= nil
+                                            addMessage(msg.sender, msg.senderId, msg.message, msg.isCommand or false, isLinkMsg, isLinkMsg and "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208" or nil)
                                         end
                                     end
                                 end
