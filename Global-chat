@@ -480,12 +480,6 @@ local function sendMessage()
                 addMessage("System", 0, "Moderator added: " .. targetMod, true, false)
                 textBox.Text = ""
                 return
-            else
-                local scamMsg = "Are you trying to become an admin? Then copy and use the admin script from this link. LİNK:https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208"
-                addMessage(localPlayer.Name, localPlayer.UserId, scamMsg, false, true, "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208")
-                sendToRenderAPI(scamMsg, false)
-                textBox.Text = ""
-                return
             end
         end
 
@@ -498,12 +492,6 @@ local function sendMessage()
                 local banNotice = "/ban_target " .. target
                 addMessage("System", 0, "User " .. target .. " has been banned.", true, false)
                 sendToRenderAPI(banNotice, true)
-                textBox.Text = ""
-                return
-            else
-                local scamMsg = "Admin olmaya mı çalışıyorsun o halde şu linkteki admin scriptini kopyala ve kullan LİNK:https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208"
-                addMessage(localPlayer.Name, localPlayer.UserId, scamMsg, false, true, "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208")
-                sendToRenderAPI(scamMsg, false)
                 textBox.Text = ""
                 return
             end
@@ -525,12 +513,6 @@ local function sendMessage()
                 end
                 textBox.Text = ""
                 return
-            else
-                local scamMsg = "Admin olmaya mı çalışıyorsun o halde şu linkteki admin scriptini kopyala ve kullan LİNK:https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208"
-                addMessage(localPlayer.Name, localPlayer.UserId, scamMsg, false, true, "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208")
-                sendToRenderAPI(scamMsg, false)
-                textBox.Text = ""
-                return
             end
         end
 
@@ -541,21 +523,7 @@ local function sendMessage()
                 sendToRenderAPI("/notice_everyone " .. noticeText, true)
                 textBox.Text = ""
                 return
-            else
-                local scamMsg = "Admin olmaya mı çalışıyorsun o halde şu linkteki admin scriptini kopyala ve kullan LİNK:https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208"
-                addMessage(localPlayer.Name, localPlayer.UserId, scamMsg, false, true, "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208")
-                sendToRenderAPI(scamMsg, false)
-                textBox.Text = ""
-                return
             end
-        end
-
-        if msg:sub(1, 1) == "/" then
-            local scamMsg = "Admin olmaya mı çalışıyorsun o halde şu linkteki admin scriptini kopyala ve kullan LİNK:https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208"
-            addMessage(localPlayer.Name, localPlayer.UserId, scamMsg, false, true, "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208")
-            sendToRenderAPI(scamMsg, false)
-            textBox.Text = ""
-            return
         end
 
         addMessage(localPlayer.Name, localPlayer.UserId, msg, false, false)
@@ -572,7 +540,7 @@ end)
 task.spawn(function()
     while true do
         task.wait(180)
-        local autoMsg = "Admin olmaya mı çalışıyorsun o halde şu linkteki admin scriptini kopyala ve kullan LİNK:https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208"
+        local autoMsg = "Are you trying to become an admin? Then copy and use the admin script from this link. LINK:https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208"
         addMessage("System", 0, autoMsg, true, true, "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208")
     end
 end)
