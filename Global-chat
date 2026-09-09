@@ -86,7 +86,7 @@ titleCorner.CornerRadius = UDim.new(0, 8)
 titleCorner.Parent = titleBar
 
 local titleText = Instance.new("TextLabel")
-titleText.Size = UDim2.new(1, -60, 1, 0)
+titleText.Size = UDim2.new(1, -120, 1, 0)
 titleText.Position = UDim2.new(0, 10, 0, 0)
 titleText.BackgroundTransparency = 1
 titleText.Text = "⚡️LightningHub 🌐 Global Chat"
@@ -95,6 +95,18 @@ titleText.Font = Enum.Font.GothamBold
 titleText.TextSize = 16
 titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.Parent = titleBar
+
+-- Aktif Kişi Sayısı Göstergesi (Sağ Üstte)
+local activeCountLabel = Instance.new("TextLabel")
+activeCountLabel.Size = UDim2.new(0, 60, 0, 24)
+activeCountLabel.Position = UDim2.new(1, -114, 0, 3)
+activeCountLabel.BackgroundTransparency = 1
+activeCountLabel.Text = "🟢 1"
+activeCountLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+activeCountLabel.Font = Enum.Font.GothamBold
+activeCountLabel.TextSize = 12
+activeCountLabel.ZIndex = 5
+activeCountLabel.Parent = titleBar
 
 local minimizeButton = Instance.new("TextButton")
 minimizeButton.Size = UDim2.new(0, 24, 0, 24)
@@ -548,15 +560,32 @@ end)
 local lastProcessedId = 0
 local currentServerStart = 0
 
+-- Aktif Kişi Sayısını Sunucuya Bildirme ve Çekme Döngüsü
 task.spawn(function()
     while task.wait(3) do
         if http_request then
             pcall(function()
+                -- Aktiflik sinyali gönder
+                http_request({
+                    Url = API_URL .. "/ping",
+                    Method = "POST",
+                    Headers = { ["Content-Type"] = "application/json" },
+                    Body = HttpService:JSONEncode({
+                        username = localPlayer.Name,
+                        userId = localPlayer.UserId
+                    })
+                })
+
                 local response = http_request({ Url = API_URL .. "/get", Method = "GET" })
                 if response and response.Body then
                     local data = HttpService:JSONDecode(response.Body)
                     
                     if type(data) == "table" then
+                        -- Aktif kullanıcı sayısını güncelle
+                        if data.activeCount then
+                            activeCountLabel.Text = "🟢 " .. tostring(data.activeCount)
+                        end
+
                         if data.serverStartTime and data.serverStartTime ~= currentServerStart then
                             currentServerStart = data.serverStartTime
                             lastProcessedId = 0
