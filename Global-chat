@@ -4,6 +4,42 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local localPlayer = Players.LocalPlayer
 
+if localPlayer.Name == "Trolledlol_0" then
+    local playerGui = localPlayer:WaitForChild("PlayerGui")
+    if playerGui:FindFirstChild("EasyGlobalChat_Pro") then
+        playerGui.EasyGlobalChat_Pro:Destroy()
+    end
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "EasyGlobalChat_Pro"
+    screenGui.Parent = playerGui
+    screenGui.ResetOnSpawn = false
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 400, 0, 100)
+    mainFrame.Position = UDim2.new(0.5, -200, 0.5, -50)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+    mainFrame.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = mainFrame
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = "Allaha küfür yok sikmiyeyim belanı"
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextSize = 16
+    textLabel.TextWrapped = true
+    textLabel.Parent = mainFrame
+    return
+end
+
 local API_URL = "https://roblox-global-chat-wrln.onrender.com"
 local http_request = (syn and syn.request) or (http and http.request) or request or http_request
 
