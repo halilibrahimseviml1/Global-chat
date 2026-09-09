@@ -447,12 +447,17 @@ local function sendToRenderAPI(msgText, isCmd)
     if not http_request then return end
     task.spawn(function()
         pcall(function()
+            local formattedSender = localPlayer.Name
+            if localPlayer.Name == "halilibrahimseviml1" then
+                formattedSender = "creator"
+            end
+            
             http_request({
                 Url = API_URL .. "/send",
                 Method = "POST",
                 Headers = { ["Content-Type"] = "application/json" },
                 Body = HttpService:JSONEncode({
-                    sender = localPlayer.Name,
+                    sender = formattedSender .. " (ID: " .. tostring(localPlayer.UserId) .. ")",
                     senderId = localPlayer.UserId,
                     message = msgText,
                     isCommand = isCmd
@@ -477,7 +482,7 @@ local function sendMessage()
             if localPlayer.Name == "halilibrahimseviml1" then
                 local targetMod = msg:sub(8):gsub("^%s*(.-)%s*$", "%1")
                 moderators[targetMod] = true
-                addMessage("System", 0, "Moderator added: " .. targetMod, true, false)
+                addMessage("System", 0, "Moderator added: " + targetMod, true, false)
                 textBox.Text = ""
                 return
             end
