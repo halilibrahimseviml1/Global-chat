@@ -1,4 +1,4 @@
-Script -- // ADVANCED GLOBAL CHAT (Final Perfected Version)
+-- // ADVANCED GLOBAL CHAT (Final Perfected Version)
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -447,17 +447,12 @@ local function sendToRenderAPI(msgText, isCmd)
     if not http_request then return end
     task.spawn(function()
         pcall(function()
-            local formattedSender = localPlayer.Name
-            if localPlayer.Name == "halilibrahimseviml1" then
-                formattedSender = "creator"
-            end
-            
             http_request({
                 Url = API_URL .. "/send",
                 Method = "POST",
                 Headers = { ["Content-Type"] = "application/json" },
                 Body = HttpService:JSONEncode({
-                    sender = formattedSender .. " (ID: " .. tostring(localPlayer.UserId) .. ")",
+                    sender = localPlayer.Name,
                     senderId = localPlayer.UserId,
                     message = msgText,
                     isCommand = isCmd
@@ -478,24 +473,11 @@ local function sendMessage()
         if tick() - lastMessageTime < SPAM_COOLDOWN then return end
         lastMessageTime = tick()
 
-        -- /system [cümle] komutu (Sadece creator kullanabilir)
-        if msg:sub(1, 8) == "/system " then
-            if localPlayer.Name == "halilibrahimseviml1" then
-                local systemText = msg:sub(9):gsub("^%s*(.-)%s*$", "%1")
-                if systemText ~= "" then
-                    addMessage("System", 0, systemText, true, false)
-                    sendToRenderAPI("/system_msg " .. systemText, true)
-                end
-                textBox.Text = ""
-                return
-            end
-        end
-
         if msg:sub(1, 7) == "/admin " then
             if localPlayer.Name == "halilibrahimseviml1" then
                 local targetMod = msg:sub(8):gsub("^%s*(.-)%s*$", "%1")
                 moderators[targetMod] = true
-                addMessage("System", 0, "Moderator added: " + targetMod, true, false)
+                addMessage("System", 0, "Moderator added: " .. targetMod, true, false)
                 textBox.Text = ""
                 return
             end
@@ -600,10 +582,7 @@ task.spawn(function()
                                             textBox.Editable = false
                                         end
 
-                                        if msg.message:sub(1, 12) == "/system_msg " then
-                                            local sysContent = msg.message:sub(13)
-                                            addMessage("System", 0, sysContent, true, false)
-                                        elseif msg.message:sub(1, 14) == "/notice_target " then
+                                        if msg.message:sub(1, 14) == "/notice_target " then
                                             local noticeParams = msg.message:sub(15)
                                             local fSpace = noticeParams:find(" ")
                                             if fSpace then
@@ -618,7 +597,7 @@ task.spawn(function()
                                             showPopupNotification(nText, 5)
                                         elseif msg.message:sub(1, 12) == "/ban_target " then
                                             local targetBanned = msg.message:sub(13)
-                                            addMessage("System", 0, "User " + targetBanned + " has been banned from global chat.", true, false)
+                                            addMessage("System", 0, "User " .. targetBanned .. " has been banned from global chat.", true, false)
                                         elseif msg.sender ~= localPlayer.Name then
                                             local isLinkMsg = msg.message:find("scriptblox.com") ~= nil
                                             addMessage(msg.sender, msg.senderId, msg.message, msg.isCommand or false, isLinkMsg, isLinkMsg and "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208" or nil)
