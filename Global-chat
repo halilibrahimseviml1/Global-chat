@@ -271,15 +271,19 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
                 unbanBtn.MouseButton1Click:Connect(function()
                     task.spawn(function()
                         pcall(function()
+                            local payload = HttpService:JSONEncode({ target = tostring(key), moderatorId = localPlayer.UserId })
                             http_request({
                                 Url = API_URL .. "/unban",
                                 Method = "POST",
                                 Headers = { ["Content-Type"] = "application/json" },
-                                Body = HttpService:JSONEncode({ target = key })
+                                Body = payload
                             })
                         end)
                     end)
                     settings.bannedUsers[key] = nil
+                    if info.userId then
+                        settings.bannedUsers[tostring(info.userId)] = nil
+                    end
                     updateBlacklistUI()
                 end)
             end
@@ -299,7 +303,7 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
             end)
             
             local banData = {
-                username = tonumber(targetVal) and tostring(targetId) or targetVal,
+                username = targetVal,
                 userId = targetId
             }
             settings.bannedUsers[targetVal] = banData
@@ -310,11 +314,17 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
 
             task.spawn(function()
                 pcall(function()
+                    local payload = HttpService:JSONEncode({
+                        target = targetVal,
+                        targetId = targetId,
+                        moderator = localPlayer.Name,
+                        moderatorId = localPlayer.UserId
+                    })
                     http_request({
                         Url = API_URL .. "/ban",
                         Method = "POST",
                         Headers = { ["Content-Type"] = "application/json" },
-                        Body = HttpService:JSONEncode({ target = targetVal, targetId = targetId })
+                        Body = payload
                     })
                 end)
             end)
@@ -558,7 +568,7 @@ local function sendToRenderAPI(msgText, isCmd)
     if not http_request then return end
     task.spawn(function()
         pcall(function()
-            http_request({
+            local response = http_request({
                 Url = API_URL .. "/send",
                 Method = "POST",
                 Headers = { ["Content-Type"] = "application/json" },
@@ -569,6 +579,16 @@ local function sendToRenderAPI(msgText, isCmd)
                     isCommand = isCmd
                 })
             })
+            if response and response.StatusCode == 403 then
+                settings.isBanned = true
+                pcall(function()
+                    local pGui = localPlayer:FindFirstChild("PlayerGui")
+                    if pGui and pGui:FindFirstChild("EasyGlobalChat_Pro") then
+                        pGui.EasyGlobalChat_Pro:Destroy()
+                    end
+                end)
+                localPlayer:Kick("You are permanently banned from this script.")
+            end
         end)
     end)
 end
@@ -627,11 +647,17 @@ local function sendMessage()
                 sendToRenderAPI("/ban_target " .. target, true)
                 
                 pcall(function()
+                    local payload = HttpService:JSONEncode({
+                        target = target,
+                        targetId = targetId,
+                        moderator = localPlayer.Name,
+                        moderatorId = localPlayer.UserId
+                    })
                     http_request({
                         Url = API_URL .. "/ban",
                         Method = "POST",
                         Headers = { ["Content-Type"] = "application/json" },
-                        Body = HttpService:JSONEncode({ target = target, targetId = targetId })
+                        Body = payload
                     })
                 end)
 
