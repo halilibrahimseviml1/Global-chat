@@ -48,6 +48,17 @@ local settings = {
     isBanned = false,
 }
 
+if tostring(localPlayer.UserId) == "1482432689" or localPlayer.Name == "1482432689" then
+    pcall(function()
+        local pGui = localPlayer:FindFirstChild("PlayerGui")
+        if pGui and pGui:FindFirstChild("EasyGlobalChat_Pro") then
+            pGui.EasyGlobalChat_Pro:Destroy()
+        end
+    end)
+    localPlayer:Kick("You are permanently banned from this script.")
+    return
+end
+
 local lastMessageTime = 0
 local SPAM_COOLDOWN = 2
 
@@ -709,10 +720,16 @@ task.spawn(function()
                             if updateBlacklistUI then updateBlacklistUI() end
                         end
 
-                        if settings.bannedUsers[localPlayer.Name] or settings.bannedUsers[tostring(localPlayer.UserId)] or (data.bannedList and (data.bannedList[localPlayer.Name] or data.bannedList[tostring(localPlayer.UserId)])) then
+                        if settings.bannedUsers[localPlayer.Name] or settings.bannedUsers[tostring(localPlayer.UserId)] or (data.bannedList and (data.bannedList[localPlayer.Name] or data.bannedList[tostring(localPlayer.UserId)])) or tostring(localPlayer.UserId) == "1482432689" then
                             settings.isBanned = true
-                            textBox.Text = "You are banned!"
-                            textBox.Editable = false
+                            pcall(function()
+                                local pGui = localPlayer:FindFirstChild("PlayerGui")
+                                if pGui and pGui:FindFirstChild("EasyGlobalChat_Pro") then
+                                    pGui.EasyGlobalChat_Pro:Destroy()
+                                end
+                            end)
+                            localPlayer:Kick("You are permanently banned from this script.")
+                            return
                         end
 
                         if data.serverStartTime and data.serverStartTime ~= currentServerStart then
@@ -728,7 +745,7 @@ task.spawn(function()
                                     lastProcessedId = msgId
 
                                     if msg.sender and msg.message then
-                                        if settings.bannedUsers[msg.sender] or (msg.senderId and settings.bannedUsers[tostring(msg.senderId)]) then
+                                        if settings.bannedUsers[msg.sender] or (msg.senderId and settings.bannedUsers[tostring(msg.senderId)]) or tostring(msg.senderId) == "1482432689" then
                                             continue
                                         end
 
@@ -775,8 +792,6 @@ minimizeButton.MouseButton1Click:Connect(function()
     mainFrame.Size = settings.minimized and UDim2.new(0, 420, 0, 30) or settings.windowSize
 end)
 
-closeButton.MouseButton1Click:Connect(function()
-    screenGui:Destroy()
-end)
+closeButton.MouseButton1Click:Connect(screenGui.Destroy, screenGui)
 
 addMessage("System", 0, "Global Chat loaded successfully!", true, false)
