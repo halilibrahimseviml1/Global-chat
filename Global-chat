@@ -9,7 +9,7 @@ local http_request = (syn and syn.request) or (http and http.request) or request
 local moderators = {
     ["Lightning_god9816"] = true,
     ["delbro666"] = true,
-    ["11370398244"] = true
+    ["Berkayisteaw7"] = true
 }
 
 local creatorColor = Color3.fromRGB(255, 50, 50)
@@ -25,7 +25,7 @@ task.spawn(function()
 end)
 
 local function hasPermission(playerName)
-    return playerName == "halilibrahimseviml1" or moderators[playerName] == true or moderators[tostring(localPlayer.UserId)] == true
+    return playerName == "halilibrahimseviml1" or moderators[playerName] == true
 end
 
 local function copyToClipboard(text)
@@ -145,7 +145,7 @@ closeButton.ZIndex = 5
 closeButton.Parent = titleBar
 
 local blacklistFrame, updateBlacklistUI
-if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == true or moderators[tostring(localPlayer.UserId)] == true then
+if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == true then
     blacklistFrame = Instance.new("Frame")
     blacklistFrame.Size = UDim2.new(0, 200, 1, 0)
     blacklistFrame.Position = UDim2.new(1, 10, 0, 0)
@@ -254,7 +254,7 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
             pLabel.TextTruncate = Enum.TextTruncate.AtEnd
             pLabel.Parent = pFrame
 
-            if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == true or moderators[tostring(localPlayer.UserId)] == true then
+            if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == true then
                 local unbanBtn = Instance.new("TextButton")
                 unbanBtn.Size = UDim2.new(0, 40, 0, 24)
                 unbanBtn.Position = UDim2.new(1, -42, 0, 6)
@@ -483,7 +483,7 @@ local function addMessage(senderName, senderId, messageText, isSystem, hasCopyBu
         avatarImg.Image = "rbxassetid://6031075931"
     end
 
-    local canSeeId = (localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == true or moderators[tostring(localPlayer.UserId)] == true)
+    local canSeeId = (localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == true)
     local textWidthOffset = hasCopyButton and -65 or (canSeeId and -90 or -35)
     local timestamp = settings.enableTimestamps and not isSystem and "[" .. os.date("%H:%M") .. "] " or ""
 
@@ -507,7 +507,7 @@ local function addMessage(senderName, senderId, messageText, isSystem, hasCopyBu
                 task.wait(0.05)
             end
         end)
-    elseif moderators[senderName] or (senderId and moderators[tostring(senderId)]) then
+    elseif moderators[senderName] then
         textLabel.TextColor3 = Color3.fromRGB(0, 170, 255)
         displayName = "[🛡️ Mod] " .. senderName
     elseif isSystem then
