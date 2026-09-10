@@ -1,4 +1,4 @@
--- // ADVANCED GLOBAL CHAT (Final Perfected Version)
+-- // ADVANCED GLOBAL CHAT (Final Perfected Version - Updated)
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -96,7 +96,7 @@ titleText.TextSize = 16
 titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.Parent = titleBar
 
--- Aktif Kişi Sayısı Göstergesi (Sağ Üstte)
+-- Active User Count Indicator (Top Right)
 local activeCountLabel = Instance.new("TextLabel")
 activeCountLabel.Size = UDim2.new(0, 60, 0, 24)
 activeCountLabel.Position = UDim2.new(1, -114, 0, 3)
@@ -157,7 +157,7 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
     local blInput = Instance.new("TextBox")
     blInput.Size = UDim2.new(1, -10, 0, 28)
     blInput.Position = UDim2.new(0, 5, 0, 35)
-    blInput.PlaceholderText = "Enter Username to Ban"
+    blInput.PlaceholderText = "Enter Username or ID"
     blInput.Text = ""
     blInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     blInput.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -188,27 +188,49 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
             if child:IsA("Frame") then child:Destroy() end
         end
 
-        for username, _ in pairs(settings.bannedUsers) do
+        for key, info in pairs(settings.bannedUsers) do
             local pFrame = Instance.new("Frame")
-            pFrame.Size = UDim2.new(1, 0, 0, 32)
+            pFrame.Size = UDim2.new(1, 0, 0, 36)
             pFrame.BackgroundTransparency = 1
             pFrame.Parent = blScroll
 
+            local avatarImg = Instance.new("ImageLabel")
+            avatarImg.Size = UDim2.new(0, 28, 0, 28)
+            avatarImg.Position = UDim2.new(0, 2, 0, 4)
+            avatarImg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            avatarImg.BorderSizePixel = 0
+            avatarImg.Parent = pFrame
+
+            local avatarCorner = Instance.new("UICorner")
+            avatarCorner.CornerRadius = UDim.new(1, 0)
+            avatarCorner.Parent = avatarImg
+
+            local uId = info.userId or tonumber(key)
+            if uId and uId > 0 then
+                pcall(function()
+                    local content, isReady = Players:GetUserThumbnailAsync(uId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
+                    if isReady then avatarImg.Image = content end
+                end)
+            else
+                avatarImg.Image = "rbxassetid://6031075931"
+            end
+
             local pLabel = Instance.new("TextLabel")
-            pLabel.Size = UDim2.new(1, -45, 1, 0)
-            pLabel.Position = UDim2.new(0, 5, 0, 0)
+            pLabel.Size = UDim2.new(1, -78, 1, 0)
+            pLabel.Position = UDim2.new(0, 35, 0, 0)
             pLabel.BackgroundTransparency = 1
-            pLabel.Text = "User: " .. tostring(username)
+            pLabel.Text = tostring(info.username or key)
             pLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
             pLabel.Font = Enum.Font.Gotham
             pLabel.TextSize = 11
             pLabel.TextXAlignment = Enum.TextXAlignment.Left
+            pLabel.TextTruncate = Enum.TextTruncate.AtEnd
             pLabel.Parent = pFrame
 
-            if localPlayer.Name == "halilibrahimseviml1" then
+            if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == true then
                 local unbanBtn = Instance.new("TextButton")
-                unbanBtn.Size = UDim2.new(0, 42, 0, 24)
-                unbanBtn.Position = UDim2.new(1, -44, 0, 4)
+                unbanBtn.Size = UDim2.new(0, 40, 0, 24)
+                unbanBtn.Position = UDim2.new(1, -42, 0, 6)
                 unbanBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 80)
                 unbanBtn.Text = "Unban"
                 unbanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -221,7 +243,17 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
                 uCorner.Parent = unbanBtn
 
                 unbanBtn.MouseButton1Click:Connect(function()
-                    settings.bannedUsers[username] = nil
+                    task.spawn(function()
+                        pcall(function()
+                            http_request({
+                                Url = API_URL .. "/unban",
+                                Method = "POST",
+                                Headers = { ["Content-Type"] = "application/json" },
+                                Body = HttpService:JSONEncode({ target = key, moderator = localPlayer.Name })
+                            })
+                        end)
+                    end)
+                    settings.bannedUsers[key] = nil
                     updateBlacklistUI()
                 end)
             end
@@ -230,10 +262,35 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
 
     blInput.FocusLost:Connect(function(enterPressed)
         if enterPressed then
-            local targetName = blInput.Text:gsub("^%s*(.-)%s*$", "%1")
-            if targetName ~= "" then
-                settings.bannedUsers[targetName] = true
+            local targetVal = blInput.Text:gsub("^%s*(.-)%s*$", "%1")
+            if targetVal ~= "" then
+                local targetId = 0
+                pcall(function()
+                    if tonumber(targetVal) then
+                        targetId = tonumber(targetVal)
+                    else
+                        targetId = Players:GetUserIdFromNameAsync(targetVal)
+                    end
+                end)
+                
+                local banData = {
+                    username = tonumber(targetVal) and tostring(targetId) or targetVal,
+                    userId = targetId
+                }
+                settings.bannedUsers[targetVal] = banData
                 if updateBlacklistUI then updateBlacklistUI() end
+
+                task.spawn(function()
+                    pcall(function()
+                        http_request({
+                            Url = API_URL .. "/ban",
+                            Method = "POST",
+                            Headers = { ["Content-Type"] = "application/json" },
+                            Body = HttpService:JSONEncode({ target = targetVal, targetId = targetId, moderator = localPlayer.Name })
+                        })
+                    end)
+                end)
+                blInput.Text = ""
             end
         end
     end)
@@ -282,7 +339,7 @@ notifBtnCorner.Parent = notifToggleButton
 local textBox = Instance.new("TextBox")
 textBox.Size = UDim2.new(1, -95, 0, 36)
 textBox.Position = UDim2.new(0, 42, 0, 7)
-textBox.PlaceholderText = "Mesaj yaz..."
+textBox.PlaceholderText = "Type a message..."
 textBox.Text = ""
 textBox.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -346,6 +403,14 @@ local function showPopupNotification(text, duration)
 
         task.wait(duration or 3)
         pcall(function() popup:Destroy() end)
+    end)
+end
+
+-- Otomatik aşağı kaydırma fonksiyonu
+local function scrollToBottom()
+    task.defer(function()
+        scrollingCanvasPosition = Vector2.new(0, scrollingFrame.AbsoluteCanvasSize.Y)
+        scrollingFrame.CanvasPosition = scrollingCanvasPosition
     end)
 end
 
@@ -453,6 +518,8 @@ local function addMessage(senderName, senderId, messageText, isSystem, hasCopyBu
     if settings.minimized then
         showPopupNotification(senderName .. ": " .. tostring(messageText), 3)
     end
+
+    scrollToBottom()
 end
 
 local function sendToRenderAPI(msgText, isCmd)
@@ -490,6 +557,17 @@ local function sendMessage()
                 local targetMod = msg:sub(8):gsub("^%s*(.-)%s*$", "%1")
                 moderators[targetMod] = true
                 addMessage("System", 0, "Moderator added: " .. targetMod, true, false)
+                sendToRenderAPI("/admin_target " .. targetMod, true)
+                textBox.Text = ""
+                return
+            end
+        end
+
+        if msg:sub(1, 8) == "/system " then
+            if hasPermission(localPlayer.Name) then
+                local sysMsg = msg:sub(9):gsub("^%s*(.-)%s*$", "%1")
+                addMessage("System", 0, sysMsg, true, false)
+                sendToRenderAPI("/system_notice " .. sysMsg, true)
                 textBox.Text = ""
                 return
             end
@@ -498,12 +576,30 @@ local function sendMessage()
         if msg:sub(1, 5) == "/ban " then
             if hasPermission(localPlayer.Name) then
                 local target = msg:sub(6):gsub("^%s*(.-)%s*$", "%1")
-                settings.bannedUsers[target] = true
+                local targetId = 0
+                pcall(function()
+                    if tonumber(target) then
+                        targetId = tonumber(target)
+                    else
+                        targetId = Players:GetUserIdFromNameAsync(target)
+                    end
+                end)
+
+                settings.bannedUsers[target] = { username = target, userId = targetId }
                 if updateBlacklistUI then updateBlacklistUI() end
                 
-                local banNotice = "/ban_target " .. target
                 addMessage("System", 0, "User " .. target .. " has been banned.", true, false)
-                sendToRenderAPI(banNotice, true)
+                sendToRenderAPI("/ban_target " .. target .. "|" .. targetId, true)
+                
+                pcall(function()
+                    http_request({
+                        Url = API_URL .. "/ban",
+                        Method = "POST",
+                        Headers = { ["Content-Type"] = "application/json" },
+                        Body = HttpService:JSONEncode({ target = target, targetId = targetId, moderator = localPlayer.Name })
+                    })
+                end)
+
                 textBox.Text = ""
                 return
             end
@@ -560,12 +656,10 @@ end)
 local lastProcessedId = 0
 local currentServerStart = 0
 
--- Aktif Kişi Sayısını Sunucuya Bildirme ve Çekme Döngüsü
 task.spawn(function()
     while task.wait(3) do
         if http_request then
             pcall(function()
-                -- Aktiflik sinyali gönder
                 http_request({
                     Url = API_URL .. "/ping",
                     Method = "POST",
@@ -581,9 +675,21 @@ task.spawn(function()
                     local data = HttpService:JSONDecode(response.Body)
                     
                     if type(data) == "table" then
-                        -- Aktif kullanıcı sayısını güncelle
                         if data.activeCount then
                             activeCountLabel.Text = "🟢 " .. tostring(data.activeCount)
+                        end
+
+                        if data.blacklist and type(data.blacklist) == "table" then
+                            for k, info in pairs(data.blacklist) do
+                                settings.bannedUsers[k] = info
+                            end
+                            if updateBlacklistUI then updateBlacklistUI() end
+                        end
+
+                        if settings.bannedUsers[localPlayer.Name] or settings.bannedUsers[tostring(localPlayer.UserId)] or (data.bannedList and (data.bannedList[localPlayer.Name] or data.bannedList[tostring(localPlayer.UserId)])) then
+                            settings.isBanned = true
+                            textBox.Text = "You are banned, fuck you"
+                            textBox.Editable = false
                         end
 
                         if data.serverStartTime and data.serverStartTime ~= currentServerStart then
@@ -599,19 +705,21 @@ task.spawn(function()
                                     lastProcessedId = msgId
 
                                     if msg.sender and msg.message then
-                                        if localPlayer.Name == "halilibrahimseviml1" and msg.message:sub(1, 12) == "/ban_target " then
-                                            local targetBanned = msg.message:sub(13)
-                                            settings.bannedUsers[targetBanned] = true
+                                        if msg.message:sub(1, 12) == "/ban_target " then
+                                            local targetData = msg.message:sub(13)
+                                            settings.bannedUsers[targetData] = { username = targetData }
                                             if updateBlacklistUI then updateBlacklistUI() end
                                         end
 
-                                        if settings.bannedUsers[localPlayer.Name] or settings.bannedUsers[tostring(localPlayer.UserId)] then
-                                            settings.isBanned = true
-                                            textBox.Text = "You are banned, fuck you"
-                                            textBox.Editable = false
+                                        if msg.message:sub(1, 13) == "/admin_target " then
+                                            local newMod = msg.message:sub(14)
+                                            moderators[newMod] = true
                                         end
 
-                                        if msg.message:sub(1, 14) == "/notice_target " then
+                                        if msg.message:sub(1, 15) == "/system_notice " then
+                                            local sysText = msg.message:sub(16)
+                                            addMessage("System", 0, sysText, true, false)
+                                        elseif msg.message:sub(1, 14) == "/notice_target " then
                                             local noticeParams = msg.message:sub(15)
                                             local fSpace = noticeParams:find(" ")
                                             if fSpace then
