@@ -1,4 +1,4 @@
--- // ADVANCED GLOBAL CHAT (Final Perfected Version - Updated)
+-- // ADVANCED GLOBAL CHAT (Final Fixed Version)
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -96,7 +96,6 @@ titleText.TextSize = 16
 titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.Parent = titleBar
 
--- Active User Count Indicator (Top Right)
 local activeCountLabel = Instance.new("TextLabel")
 activeCountLabel.Size = UDim2.new(0, 60, 0, 24)
 activeCountLabel.Position = UDim2.new(1, -114, 0, 3)
@@ -130,7 +129,6 @@ closeButton.TextSize = 14
 closeButton.ZIndex = 5
 closeButton.Parent = titleBar
 
--- Blacklist Panel
 local blacklistFrame, updateBlacklistUI
 if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == true then
     blacklistFrame = Instance.new("Frame")
@@ -249,7 +247,7 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
                                 Url = API_URL .. "/unban",
                                 Method = "POST",
                                 Headers = { ["Content-Type"] = "application/json" },
-                                Body = HttpService:JSONEncode({ target = key, moderator = localPlayer.Name })
+                                Body = HttpService:JSONEncode({ target = key })
                             })
                         end)
                     end)
@@ -286,7 +284,7 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
                             Url = API_URL .. "/ban",
                             Method = "POST",
                             Headers = { ["Content-Type"] = "application/json" },
-                            Body = HttpService:JSONEncode({ target = targetVal, targetId = targetId, moderator = localPlayer.Name })
+                            Body = HttpService:JSONEncode({ target = targetVal, targetId = targetId })
                         })
                     end)
                 end)
@@ -406,11 +404,9 @@ local function showPopupNotification(text, duration)
     end)
 end
 
--- Otomatik aşağı kaydırma fonksiyonu
 local function scrollToBottom()
     task.defer(function()
-        scrollingCanvasPosition = Vector2.new(0, scrollingFrame.AbsoluteCanvasSize.Y)
-        scrollingFrame.CanvasPosition = scrollingCanvasPosition
+        scrollingFrame.CanvasPosition = Vector2.new(0, scrollingFrame.AbsoluteCanvasSize.Y)
     end)
 end
 
@@ -543,7 +539,7 @@ end
 
 local function sendMessage()
     if settings.isBanned then
-        textBox.Text = "You are banned, fuck you"
+        textBox.Text = "You are banned!"
         return
     end
 
@@ -552,30 +548,9 @@ local function sendMessage()
         if tick() - lastMessageTime < SPAM_COOLDOWN then return end
         lastMessageTime = tick()
 
-        if msg:sub(1, 7) == "/admin " then
-            if localPlayer.Name == "halilibrahimseviml1" then
-                local targetMod = msg:sub(8):gsub("^%s*(.-)%s*$", "%1")
-                moderators[targetMod] = true
-                addMessage("System", 0, "Moderator added: " .. targetMod, true, false)
-                sendToRenderAPI("/admin_target " .. targetMod, true)
-                textBox.Text = ""
-                return
-            end
-        end
-
-        if msg:sub(1, 8) == "/system " then
-            if hasPermission(localPlayer.Name) then
-                local sysMsg = msg:sub(9):gsub("^%s*(.-)%s*$", "%1")
-                addMessage("System", 0, sysMsg, true, false)
-                sendToRenderAPI("/system_notice " .. sysMsg, true)
-                textBox.Text = ""
-                return
-            end
-        end
-
-        if msg:sub(1, 5) == "/ban " then
-            if hasPermission(localPlayer.Name) then
-                local target = msg:sub(6):gsub("^%s*(.-)%s*$", "%1")
+        if msg:sub(1, 6) == "/ban " then
+            if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == true then
+                local target = msg:sub(7):gsub("^%s*(.-)%s*$", "%1")
                 local targetId = 0
                 pcall(function()
                     if tonumber(target) then
@@ -586,49 +561,22 @@ local function sendMessage()
                 end)
 
                 settings.bannedUsers[target] = { username = target, userId = targetId }
+                if targetId > 0 then
+                    settings.bannedUsers[tostring(targetId)] = { username = target, userId = targetId }
+                end
                 if updateBlacklistUI then updateBlacklistUI() end
                 
                 addMessage("System", 0, "User " .. target .. " has been banned.", true, false)
-                sendToRenderAPI("/ban_target " .. target .. "|" .. targetId, true)
                 
                 pcall(function()
                     http_request({
                         Url = API_URL .. "/ban",
                         Method = "POST",
                         Headers = { ["Content-Type"] = "application/json" },
-                        Body = HttpService:JSONEncode({ target = target, targetId = targetId, moderator = localPlayer.Name })
+                        Body = HttpService:JSONEncode({ target = target, targetId = targetId })
                     })
                 end)
 
-                textBox.Text = ""
-                return
-            end
-        end
-
-        if msg:sub(1, 8) == "/notice " then
-            if hasPermission(localPlayer.Name) then
-                local rawParams = msg:sub(9)
-                local firstSpace = rawParams:find(" ")
-                if firstSpace then
-                    local targetUser = rawParams:sub(1, firstSpace - 1):gsub("^%s*(.-)%s*$", "%1")
-                    local noticeText = rawParams:sub(firstSpace + 1):gsub("^%s*(.-)%s*$", "%1")
-                    
-                    if targetUser == localPlayer.Name then
-                        showPopupNotification(noticeText, 5)
-                    end
-                    
-                    sendToRenderAPI("/notice_target " .. targetUser .. " " .. noticeText, true)
-                end
-                textBox.Text = ""
-                return
-            end
-        end
-
-        if msg:sub(1, 15) == "/noticeeveryone " then
-            if hasPermission(localPlayer.Name) then
-                local noticeText = msg:sub(16):gsub("^%s*(.-)%s*$", "%1")
-                showPopupNotification(noticeText, 5)
-                sendToRenderAPI("/notice_everyone " .. noticeText, true)
                 textBox.Text = ""
                 return
             end
@@ -645,14 +593,6 @@ textBox.FocusLost:Connect(function(enterPressed)
     if enterPressed then sendMessage() end
 end)
 
-task.spawn(function()
-    while true do
-        task.wait(180)
-        local autoMsg = "Are you trying to become an admin? Then copy and use the admin script from this link. LINK:https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208"
-        addMessage("System", 0, autoMsg, true, true, "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208")
-    end
-end)
-
 local lastProcessedId = 0
 local currentServerStart = 0
 
@@ -660,35 +600,23 @@ task.spawn(function()
     while task.wait(3) do
         if http_request then
             pcall(function()
-                http_request({
-                    Url = API_URL .. "/ping",
-                    Method = "POST",
-                    Headers = { ["Content-Type"] = "application/json" },
-                    Body = HttpService:JSONEncode({
-                        username = localPlayer.Name,
-                        userId = localPlayer.UserId
-                    })
-                })
-
                 local response = http_request({ Url = API_URL .. "/get", Method = "GET" })
                 if response and response.Body then
                     local data = HttpService:JSONDecode(response.Body)
                     
                     if type(data) == "table" then
-                        if data.activeCount then
-                            activeCountLabel.Text = "🟢 " .. tostring(data.activeCount)
-                        end
-
-                        if data.blacklist and type(data.blacklist) == "table" then
-                            for k, info in pairs(data.blacklist) do
+                        -- Sunucudan gelen bannedList verisini senkronize et
+                        if data.bannedList and type(data.bannedList) == "table" then
+                            for k, info in pairs(data.bannedList) do
                                 settings.bannedUsers[k] = info
                             end
                             if updateBlacklistUI then updateBlacklistUI() end
                         end
 
+                        -- Kendi ban durumumuzu kontrol et (İsim veya ID eşleşirse)
                         if settings.bannedUsers[localPlayer.Name] or settings.bannedUsers[tostring(localPlayer.UserId)] or (data.bannedList and (data.bannedList[localPlayer.Name] or data.bannedList[tostring(localPlayer.UserId)])) then
                             settings.isBanned = true
-                            textBox.Text = "You are banned, fuck you"
+                            textBox.Text = "You are banned!"
                             textBox.Editable = false
                         end
 
@@ -705,39 +633,8 @@ task.spawn(function()
                                     lastProcessedId = msgId
 
                                     if msg.sender and msg.message then
-                                        if msg.message:sub(1, 12) == "/ban_target " then
-                                            local targetData = msg.message:sub(13)
-                                            settings.bannedUsers[targetData] = { username = targetData }
-                                            if updateBlacklistUI then updateBlacklistUI() end
-                                        end
-
-                                        if msg.message:sub(1, 13) == "/admin_target " then
-                                            local newMod = msg.message:sub(14)
-                                            moderators[newMod] = true
-                                        end
-
-                                        if msg.message:sub(1, 15) == "/system_notice " then
-                                            local sysText = msg.message:sub(16)
-                                            addMessage("System", 0, sysText, true, false)
-                                        elseif msg.message:sub(1, 14) == "/notice_target " then
-                                            local noticeParams = msg.message:sub(15)
-                                            local fSpace = noticeParams:find(" ")
-                                            if fSpace then
-                                                local tUser = noticeParams:sub(1, fSpace - 1)
-                                                local nText = noticeParams:sub(fSpace + 1)
-                                                if tUser == localPlayer.Name then
-                                                    showPopupNotification(nText, 5)
-                                                end
-                                            end
-                                        elseif msg.message:sub(1, 16) == "/notice_everyone " then
-                                            local nText = msg.message:sub(17)
-                                            showPopupNotification(nText, 5)
-                                        elseif msg.message:sub(1, 12) == "/ban_target " then
-                                            local targetBanned = msg.message:sub(13)
-                                            addMessage("System", 0, "User " .. targetBanned .. " has been banned from global chat.", true, false)
-                                        elseif msg.sender ~= localPlayer.Name then
-                                            local isLinkMsg = msg.message:find("scriptblox.com") ~= nil
-                                            addMessage(msg.sender, msg.senderId, msg.message, msg.isCommand or false, isLinkMsg, isLinkMsg and "https://scriptblox.com/script/Universal-Script-Universal-Admin-Script-V3-(No-key-All-Commands)-227208" or nil)
+                                        if msg.sender ~= localPlayer.Name then
+                                            addMessage(msg.sender, msg.senderId, msg.message, msg.isCommand or false, false, nil)
                                         end
                                     end
                                 end
