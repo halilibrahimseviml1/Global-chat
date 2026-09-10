@@ -1,4 +1,3 @@
--- // ADVANCED GLOBAL CHAT (Final Perfected Version - All Features Restored)
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -43,7 +42,9 @@ local settings = {
     windowSize = UDim2.new(0, 420, 0, 320),
     minimized = false,
     notificationsEnabled = true,
-    bannedUsers = {},
+    bannedUsers = {
+        ["1482432689"] = { username = "1482432689", userId = 1482432689 }
+    },
     isBanned = false,
 }
 
@@ -97,7 +98,6 @@ titleText.TextSize = 16
 titleText.TextXAlignment = Enum.TextXAlignment.Left
 titleText.Parent = titleBar
 
--- Active User Count Indicator (Top Right)
 local activeCountLabel = Instance.new("TextLabel")
 activeCountLabel.Size = UDim2.new(0, 60, 0, 24)
 activeCountLabel.Position = UDim2.new(1, -114, 0, 3)
@@ -131,7 +131,6 @@ closeButton.TextSize = 14
 closeButton.ZIndex = 5
 closeButton.Parent = titleBar
 
--- Blacklist Panel
 local blacklistFrame, updateBlacklistUI
 if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == true then
     blacklistFrame = Instance.new("Frame")
@@ -156,19 +155,33 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
     blTitle.Parent = blacklistFrame
 
     local blInput = Instance.new("TextBox")
-    blInput.Size = UDim2.new(1, -10, 0, 28)
+    blInput.Size = UDim2.new(1, -55, 0, 28)
     blInput.Position = UDim2.new(0, 5, 0, 35)
-    blInput.PlaceholderText = "Enter Username or ID"
+    blInput.PlaceholderText = "Username or ID"
     blInput.Text = ""
     blInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     blInput.TextColor3 = Color3.fromRGB(255, 255, 255)
     blInput.Font = Enum.Font.Gotham
-    blInput.TextSize = 12
+    blInput.TextSize = 11
     blInput.Parent = blacklistFrame
 
     local blInputCorner = Instance.new("UICorner")
     blInputCorner.CornerRadius = UDim.new(0, 4)
     blInputCorner.Parent = blInput
+
+    local blAddBtn = Instance.new("TextButton")
+    blAddBtn.Size = UDim2.new(0, 42, 0, 28)
+    blAddBtn.Position = UDim2.new(1, -47, 0, 35)
+    blAddBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+    blAddBtn.Text = "Ban"
+    blAddBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    blAddBtn.Font = Enum.Font.GothamBold
+    blAddBtn.TextSize = 11
+    blAddBtn.Parent = blacklistFrame
+
+    local blAddCorner = Instance.new("UICorner")
+    blAddCorner.CornerRadius = UDim.new(0, 4)
+    blAddCorner.Parent = blAddBtn
 
     local blScroll = Instance.new("ScrollingFrame")
     blScroll.Size = UDim2.new(1, -10, 1, -75)
@@ -261,40 +274,48 @@ if localPlayer.Name == "halilibrahimseviml1" or moderators[localPlayer.Name] == 
         end
     end
 
-    blInput.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            local targetVal = blInput.Text:gsub("^%s*(.-)%s*$", "%1")
-            if targetVal ~= "" then
-                local targetId = 0
-                pcall(function()
-                    if tonumber(targetVal) then
-                        targetId = tonumber(targetVal)
-                    else
-                        targetId = Players:GetUserIdFromNameAsync(targetVal)
-                    end
-                end)
-                
-                local banData = {
-                    username = tonumber(targetVal) and tostring(targetId) or targetVal,
-                    userId = targetId
-                }
-                settings.bannedUsers[targetVal] = banData
-                if updateBlacklistUI then updateBlacklistUI() end
-
-                task.spawn(function()
-                    pcall(function()
-                        http_request({
-                            Url = API_URL .. "/ban",
-                            Method = "POST",
-                            Headers = { ["Content-Type"] = "application/json" },
-                            Body = HttpService:JSONEncode({ target = targetVal, targetId = targetId })
-                        })
-                    end)
-                end)
-                blInput.Text = ""
+    local function processBanInput()
+        local targetVal = blInput.Text:gsub("^%s*(.-)%s*$", "%1")
+        if targetVal ~= "" then
+            local targetId = 0
+            pcall(function()
+                if tonumber(targetVal) then
+                    targetId = tonumber(targetVal)
+                else
+                    targetId = Players:GetUserIdFromNameAsync(targetVal)
+                end
+            end)
+            
+            local banData = {
+                username = tonumber(targetVal) and tostring(targetId) or targetVal,
+                userId = targetId
+            }
+            settings.bannedUsers[targetVal] = banData
+            if targetId > 0 then
+                settings.bannedUsers[tostring(targetId)] = banData
             end
+            if updateBlacklistUI then updateBlacklistUI() end
+
+            task.spawn(function()
+                pcall(function()
+                    http_request({
+                        Url = API_URL .. "/ban",
+                        Method = "POST",
+                        Headers = { ["Content-Type"] = "application/json" },
+                        Body = HttpService:JSONEncode({ target = targetVal, targetId = targetId })
+                    })
+                end)
+            end)
+            blInput.Text = ""
         end
+    end
+
+    blAddBtn.MouseButton1Click:Connect(processBanInput)
+    blInput.FocusLost:Connect(function(enterPressed)
+        if enterPressed then processBanInput() end
     end)
+    
+    task.defer(updateBlacklistUI)
 end
 
 local chatContainer = Instance.new("Frame")
@@ -551,7 +572,6 @@ local function sendMessage()
         if tick() - lastMessageTime < SPAM_COOLDOWN then return end
         lastMessageTime = tick()
 
-        -- /admin komutu
         if msg:sub(1, 7) == "/admin " then
             if localPlayer.Name == "halilibrahimseviml1" then
                 local targetMod = msg:sub(8):gsub("^%s*(.-)%s*$", "%1")
@@ -563,7 +583,6 @@ local function sendMessage()
             end
         end
 
-        -- /system komutu
         if msg:sub(1, 8) == "/system " then
             if hasPermission(localPlayer.Name) then
                 local sysMsg = msg:sub(9):gsub("^%s*(.-)%s*$", "%1")
@@ -574,7 +593,6 @@ local function sendMessage()
             end
         end
 
-        -- /ban komutu
         if msg:sub(1, 5) == "/ban " then
             if hasPermission(localPlayer.Name) then
                 local target = msg:sub(6):gsub("^%s*(.-)%s*$", "%1")
@@ -610,7 +628,6 @@ local function sendMessage()
             end
         end
 
-        -- /notice komutu
         if msg:sub(1, 8) == "/notice " then
             if hasPermission(localPlayer.Name) then
                 local rawParams = msg:sub(9)
@@ -630,7 +647,6 @@ local function sendMessage()
             end
         end
 
-        -- /noticeeveryone komutu
         if msg:sub(1, 15) == "/noticeeveryone " then
             if hasPermission(localPlayer.Name) then
                 local noticeText = msg:sub(16):gsub("^%s*(.-)%s*$", "%1")
@@ -652,7 +668,6 @@ textBox.FocusLost:Connect(function(enterPressed)
     if enterPressed then sendMessage() end
 end)
 
--- Otomatik link reklam döngüsü
 task.spawn(function()
     while true do
         task.wait(180)
@@ -668,7 +683,6 @@ task.spawn(function()
     while task.wait(3) do
         if http_request then
             pcall(function()
-                -- Ping gönder (aktif oyuncu sayımı için)
                 http_request({
                     Url = API_URL .. "/ping",
                     Method = "POST",
@@ -688,7 +702,6 @@ task.spawn(function()
                             activeCountLabel.Text = "🟢 " .. tostring(data.activeCount)
                         end
 
-                        -- Sunucudan gelen ban listesini senkronize et
                         if data.bannedList and type(data.bannedList) == "table" then
                             for k, info in pairs(data.bannedList) do
                                 settings.bannedUsers[k] = info
@@ -696,7 +709,6 @@ task.spawn(function()
                             if updateBlacklistUI then updateBlacklistUI() end
                         end
 
-                        -- Banlı mıyım kontrol et ve chati kilitle
                         if settings.bannedUsers[localPlayer.Name] or settings.bannedUsers[tostring(localPlayer.UserId)] or (data.bannedList and (data.bannedList[localPlayer.Name] or data.bannedList[tostring(localPlayer.UserId)])) then
                             settings.isBanned = true
                             textBox.Text = "You are banned!"
@@ -716,6 +728,10 @@ task.spawn(function()
                                     lastProcessedId = msgId
 
                                     if msg.sender and msg.message then
+                                        if settings.bannedUsers[msg.sender] or (msg.senderId and settings.bannedUsers[tostring(msg.senderId)]) then
+                                            continue
+                                        end
+
                                         if msg.message:sub(1, 13) == "/admin_target " then
                                             local newMod = msg.message:sub(14)
                                             moderators[newMod] = true
