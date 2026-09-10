@@ -43,12 +43,13 @@ local settings = {
     minimized = false,
     notificationsEnabled = true,
     bannedUsers = {
-        ["1482432689"] = { username = "1482432689", userId = 1482432689 }
+        ["1482432689"] = { username = "1482432689", userId = 1482432689 },
+        ["11039218693"] = { username = "11039218693", userId = 11039218693 }
     },
     isBanned = false,
 }
 
-if tostring(localPlayer.UserId) == "1482432689" or localPlayer.Name == "1482432689" then
+if tostring(localPlayer.UserId) == "1482432689" or localPlayer.Name == "1482432689" or tostring(localPlayer.UserId) == "11039218693" or localPlayer.Name == "11039218693" then
     pcall(function()
         local pGui = localPlayer:FindFirstChild("PlayerGui")
         if pGui and pGui:FindFirstChild("EasyGlobalChat_Pro") then
@@ -720,7 +721,7 @@ task.spawn(function()
                             if updateBlacklistUI then updateBlacklistUI() end
                         end
 
-                        if settings.bannedUsers[localPlayer.Name] or settings.bannedUsers[tostring(localPlayer.UserId)] or (data.bannedList and (data.bannedList[localPlayer.Name] or data.bannedList[tostring(localPlayer.UserId)])) or tostring(localPlayer.UserId) == "1482432689" then
+                        if settings.bannedUsers[localPlayer.Name] or settings.bannedUsers[tostring(localPlayer.UserId)] or (data.bannedList and (data.bannedList[localPlayer.Name] or data.bannedList[tostring(localPlayer.UserId)])) or tostring(localPlayer.UserId) == "1482432689" or tostring(localPlayer.UserId) == "11039218693" then
                             settings.isBanned = true
                             pcall(function()
                                 local pGui = localPlayer:FindFirstChild("PlayerGui")
@@ -745,7 +746,7 @@ task.spawn(function()
                                     lastProcessedId = msgId
 
                                     if msg.sender and msg.message then
-                                        if settings.bannedUsers[msg.sender] or (msg.senderId and settings.bannedUsers[tostring(msg.senderId)]) or tostring(msg.senderId) == "1482432689" then
+                                        if settings.bannedUsers[msg.sender] or (msg.senderId and settings.bannedUsers[tostring(msg.senderId)]) or tostring(msg.senderId) == "1482432689" or tostring(msg.senderId) == "11039218693" then
                                             continue
                                         end
 
